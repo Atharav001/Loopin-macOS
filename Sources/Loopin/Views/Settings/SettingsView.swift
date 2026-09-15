@@ -58,16 +58,70 @@ public struct SettingsView: View {
     // MARK: - 1. Theme Selector
     private var themeSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(title: "Appearance & Themes", icon: "paintbrush.fill", subtitle: "Select from 6 Clockify, TickTick, and Neutral color schemes")
+            HStack {
+                sectionHeader(title: "Appearance & Themes", icon: "paintbrush.fill", subtitle: "Select from 7 Clockify, TickTick, Tocklog, and Neutral color schemes")
+                Spacer()
+                ThemeDropdownPicker(compact: false)
+                    .frame(width: 250)
+            }
             
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                ForEach(AppTheme.allCases) { theme in
-                    themeCard(theme)
+            // Live Theme Preview Showcase Card
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Theme.accent)
+                            .frame(width: 10, height: 10)
+                        Text(appState.currentTheme.rawValue)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Theme.textPrimary)
+                        
+                        Text(appState.currentTheme.isDark ? "DARK MODE" : "LIGHT MODE")
+                            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                            .foregroundColor(Theme.accentLight)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Theme.accent.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    
+                    Text(appState.currentTheme.description)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.textSecondary)
+                }
+                
+                Spacer()
+                
+                // Color Palette Swatches Preview
+                HStack(spacing: 8) {
+                    paletteChip(name: "Accent", color: Theme.accent)
+                    paletteChip(name: "Focus", color: Theme.productive)
+                    paletteChip(name: "Rest", color: Theme.neutral)
+                    paletteChip(name: "Waste", color: Theme.wasteful)
                 }
             }
+            .padding(14)
+            .background(appState.currentTheme.isDark ? Theme.bgCardHover : Color(white: 0.96))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Theme.borderHighlight, lineWidth: 1)
+            )
         }
         .padding(18)
         .glassCard(cornerRadius: 14)
+    }
+    
+    private func paletteChip(name: String, color: Color) -> some View {
+        VStack(spacing: 3) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(color)
+                .frame(width: 28, height: 18)
+                .shadow(color: color.opacity(0.3), radius: 2, y: 1)
+            Text(name)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(Theme.textSecondary)
+        }
     }
     
     private func themeCard(_ theme: AppTheme) -> some View {
@@ -146,6 +200,7 @@ public struct SettingsView: View {
         case .clockifyDark, .clockifyLight: return Color(red: 2/255, green: 136/255, blue: 235/255)
         case .tickTickDark, .tickTickLight: return Color(red: 59/255, green: 104/255, blue: 255/255)
         case .systemDark, .standardLight: return Color(red: 26/255, green: 115/255, blue: 232/255)
+        case .tocklogDark: return Color(red: 245/255, green: 158/255, blue: 11/255)
         }
     }
     
@@ -157,6 +212,7 @@ public struct SettingsView: View {
         case .tickTickLight: return Color(red: 246/255, green: 247/255, blue: 249/255)
         case .systemDark: return Color(red: 18/255, green: 18/255, blue: 18/255)
         case .standardLight: return Color(red: 255/255, green: 255/255, blue: 255/255)
+        case .tocklogDark: return Color(red: 20/255, green: 23/255, blue: 26/255)
         }
     }
     

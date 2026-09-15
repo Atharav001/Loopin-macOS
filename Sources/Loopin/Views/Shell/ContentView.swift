@@ -46,6 +46,8 @@ public struct ContentView: View {
                         DictionaryView()
                     case .focusPrompts:
                         FocusSettingsView()
+                    case .account:
+                        AccountView()
                     case .settings:
                         SettingsView()
                     }

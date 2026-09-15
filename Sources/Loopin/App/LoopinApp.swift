@@ -4,8 +4,27 @@ import AppKit
 public final class AppDelegate: NSObject, NSApplicationDelegate {
     public func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        setupDockIcon()
         Task { @MainActor in
             MenuBarManager.shared.setupMenuBar()
+        }
+    }
+    
+    @MainActor
+    private func setupDockIcon() {
+        if let iconPath = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
+           let iconImg = NSImage(contentsOfFile: iconPath) {
+            NSApplication.shared.applicationIconImage = iconImg
+            return
+        }
+        
+        let localPaths = ["assets/logo.png", "assets/AppIcon.icns", "../assets/logo.png"]
+        for p in localPaths {
+            if FileManager.default.fileExists(atPath: p),
+               let iconImg = NSImage(contentsOfFile: p) {
+                NSApplication.shared.applicationIconImage = iconImg
+                return
+            }
         }
     }
     

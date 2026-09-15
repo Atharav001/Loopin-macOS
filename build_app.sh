@@ -15,6 +15,10 @@ rm -rf "${BUNDLE_DIR}"
 mkdir -p "${MACOS_DIR}"
 mkdir -p "${RESOURCES_DIR}"
 
+if [ -f "assets/AppIcon.icns" ]; then
+    cp "assets/AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
+fi
+
 BIN_PATH=$(swift build -c release --show-bin-path)
 cp "${BIN_PATH}/Loopin" "${MACOS_DIR}/${APP_NAME}"
 chmod +x "${MACOS_DIR}/${APP_NAME}"
@@ -32,6 +36,8 @@ cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
     <string>Logtrackin</string>
     <key>CFBundleDisplayName</key>
     <string>Logtrackin</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

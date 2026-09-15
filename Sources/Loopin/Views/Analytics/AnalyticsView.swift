@@ -69,6 +69,12 @@ public struct AnalyticsView: View {
                     // KPI Stat Cards Row
                     kpiCardsRow
                     
+                    // Focus Highlights & Executive Insights
+                    focusHighlightsRow
+                    
+                    // 24-Hour Activity Rhythm & Density Map
+                    hourlyHeatmapCard
+                    
                     // Productivity Ratio Stacked Bar
                     ProductivityStackedBar(
                         productiveMinutes: productiveMinutes,
@@ -202,6 +208,154 @@ public struct AnalyticsView: View {
         }
         .padding(14)
         .glassCard(cornerRadius: 12)
+    }
+    
+    // MARK: - Focus Highlights & Executive Insights Row
+    private var focusHighlightsRow: some View {
+        HStack(spacing: 14) {
+            insightTile(
+                title: "Top Category",
+                value: categoryStats.first?.name ?? "Coding",
+                subtitle: categoryStats.first != nil ? "\(Int(categoryStats.first!.percentage * 100))% of tracked time" : "No entries yet",
+                icon: "tag.fill",
+                color: Theme.accent
+            )
+            
+            insightTile(
+                title: "Productivity Ratio",
+                value: "\(focusScorePercentage)%",
+                subtitle: focusScorePercentage >= 70 ? "High Focus Output" : "Balanced Work Output",
+                icon: "sparkles",
+                color: Theme.productive
+            )
+            
+            insightTile(
+                title: "Logged Activities",
+                value: "\(entries.filter { $0.kind == EntryKind.logged.rawValue }.count) Sessions",
+                subtitle: "\(formatHoursAndMinutes(totalTrackedMinutes)) total time",
+                icon: "checklist",
+                color: Theme.accentLight
+            )
+            
+            insightTile(
+                title: "Planned Target",
+                value: "\(entries.filter { $0.kind == EntryKind.planned.rawValue }.count) Planned",
+                subtitle: "Scheduled roadmap blocks",
+                icon: "calendar.badge.clock",
+                color: Theme.planned
+            )
+        }
+    }
+    
+    private func insightTile(title: String, value: String, subtitle: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(color.opacity(0.14))
+                    .frame(width: 34, height: 34)
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(color)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(Theme.textSecondary)
+                Text(value)
+                    .font(.system(size: 12.5, weight: .bold))
+                    .foregroundColor(Theme.textPrimary)
+                    .lineLimit(1)
+                Text(subtitle)
+                    .font(.system(size: 9.5))
+                    .foregroundColor(Theme.textMuted)
+                    .lineLimit(1)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .glassCard(cornerRadius: 10)
+    }
+    
+    // MARK: - 24-Hour Activity Rhythm & Density Map
+    private var hourlyHeatmapCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "circle.grid.cross.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(Theme.accentLight)
+                    Text("Daily Activity Rhythm & Density (00:00 – 23:00)")
+                        .font(Theme.titleSmall)
+                        .foregroundColor(Theme.textPrimary)
+                }
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Text("Less")
+                        .font(.system(size: 9))
+                        .foregroundColor(Theme.textMuted)
+                    Rectangle().fill(Theme.bgSubtle).frame(width: 10, height: 10).cornerRadius(2)
+                    Rectangle().fill(Theme.accent.opacity(0.3)).frame(width: 10, height: 10).cornerRadius(2)
+                    Rectangle().fill(Theme.accent.opacity(0.7)).frame(width: 10, height: 10).cornerRadius(2)
+                    Rectangle().fill(Theme.accent).frame(width: 10, height: 10).cornerRadius(2)
+                    Text("More")
+                        .font(.system(size: 9))
+                        .foregroundColor(Theme.textMuted)
+                }
+            }
+            
+            // 24 Hour blocks grid
+            let densityMap = computeHourlyDensity()
+            HStack(spacing: 4) {
+                ForEach(0..<24, id: \.self) { hour in
+                    let count = densityMap[hour] ?? 0
+                    VStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(densityColor(for: count))
+                            .frame(height: 24)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(count > 0 ? Theme.accent.opacity(0.4) : Color.clear, lineWidth: 1)
+                            )
+                        
+                        if hour % 3 == 0 {
+                            Text(String(format: "%02d", hour))
+                                .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                                .foregroundColor(Theme.textMuted)
+                        } else {
+                            Text("")
+                                .font(.system(size: 8.5))
+                                .frame(height: 10)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 14)
+    }
+    
+    private func computeHourlyDensity() -> [Int: Int] {
+        var map: [Int: Int] = [:]
+        let cal = Calendar.current
+        for entry in entries {
+            let hour = cal.component(.hour, from: entry.startAt)
+            map[hour, default: 0] += 1
+        }
+        return map
+    }
+    
+    private func densityColor(for count: Int) -> Color {
+        if count == 0 {
+            return Theme.bgSubtle
+        } else if count == 1 {
+            return Theme.accent.opacity(0.35)
+        } else if count == 2 {
+            return Theme.accent.opacity(0.65)
+        } else {
+            return Theme.accent
+        }
     }
     
     private func formatHoursAndMinutes(_ totalMinutes: Int) -> String {

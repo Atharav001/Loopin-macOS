@@ -44,6 +44,39 @@ public struct SidebarView: View {
             }
             .frame(height: 52)
             
+            // Workspace / Profile Quick Pill
+            Button(action: {
+                appState.selectedTab = .account
+            }) {
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(appState.isSignedInWithGoogle ? Theme.productive : Theme.accent)
+                        .frame(width: 7, height: 7)
+                    
+                    Text(appState.isSignedInWithGoogle ? appState.googleUserName : "Personal Workspace")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundColor(Theme.textPrimary)
+                        .lineLimit(1)
+                    
+                    Spacer(minLength: 2)
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(Theme.textMuted)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Theme.bgSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 10)
+            
             // 2. Quick "+ New Entry" Action Button
             Button(action: {
                 onNewEntry?()
@@ -84,10 +117,11 @@ public struct SidebarView: View {
                 sidebarButton(for: .analytics)
                 sidebarButton(for: .dictionary)
                 sidebarButton(for: .focusPrompts)
+                sidebarButton(for: .account)
                 
                 Divider()
                     .background(Theme.border)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 8)
                     .padding(.horizontal, 12)
                 
                 Text("PREFERENCES")
@@ -102,8 +136,11 @@ public struct SidebarView: View {
             
             Spacer()
             
-            // 4. Bottom Footer: Live Interval Status & Window Pin
-            VStack(spacing: 10) {
+            // 4. Bottom Footer: Live Interval Status, Dropdown Theme Switcher & Window Pin
+            VStack(spacing: 8) {
+                // Quick Theme Dropdown Switcher
+                ThemeDropdownPicker(compact: true)
+                
                 // Live Interval Card
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
@@ -161,19 +198,11 @@ public struct SidebarView: View {
                     .buttonStyle(.plain)
                     
                     Spacer()
-                    
-                    // Theme Quick Indicator
-                    Text(appState.currentTheme.isDark ? "DARK" : "LIGHT")
-                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
-                        .foregroundColor(Theme.textMuted)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Theme.bgSubtle)
-                        .clipShape(RoundedRectangle(cornerRadius: 3))
                 }
                 .padding(.horizontal, 4)
+                .padding(.top, 2)
             }
-            .padding(14)
+            .padding(12)
         }
         .frame(width: 220)
         .background(Theme.bgDark)

@@ -30,10 +30,28 @@ final class LoopinTests: XCTestCase {
     @MainActor
     func testThemeSwitching() {
         let state = AppState.shared
+        state.currentTheme = .tocklogDark
+        XCTAssertEqual(state.currentTheme, .tocklogDark)
+        XCTAssertTrue(state.currentTheme.isDark)
+        
         state.currentTheme = .tickTickDark
         XCTAssertEqual(state.currentTheme, .tickTickDark)
         
         state.currentTheme = .clockifyDark
         XCTAssertEqual(state.currentTheme, .clockifyDark)
+    }
+    
+    @MainActor
+    func testGoogleAccountState() {
+        let state = AppState.shared
+        state.isSignedInWithGoogle = true
+        state.googleUserName = "Atharav Narang"
+        state.googleUserEmail = "atharav.narang@gmail.com"
+        state.googleCalendarSyncEnabled = true
+        
+        XCTAssertTrue(state.isSignedInWithGoogle)
+        XCTAssertEqual(state.googleUserName, "Atharav Narang")
+        XCTAssertEqual(state.googleUserEmail, "atharav.narang@gmail.com")
+        XCTAssertTrue(state.googleCalendarSyncEnabled)
     }
 }

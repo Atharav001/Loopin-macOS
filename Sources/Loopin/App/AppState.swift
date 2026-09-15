@@ -8,6 +8,7 @@ public enum NavigationTab: String, CaseIterable, Identifiable, Sendable {
     case analytics = "Analytics & Reports"
     case dictionary = "Dictionary & Rules"
     case focusPrompts = "Focus & Pomodoro"
+    case account = "Account & Cloud"
     case settings = "Settings"
     
     public var id: String { rawValue }
@@ -19,6 +20,7 @@ public enum NavigationTab: String, CaseIterable, Identifiable, Sendable {
         case .analytics: return "chart.bar.xaxis"
         case .dictionary: return "character.book.closed"
         case .focusPrompts: return "timer"
+        case .account: return "person.crop.circle.fill"
         case .settings: return "gearshape"
         }
     }
@@ -30,6 +32,7 @@ public enum NavigationTab: String, CaseIterable, Identifiable, Sendable {
         case .analytics: return "3"
         case .dictionary: return "4"
         case .focusPrompts: return "5"
+        case .account: return "6"
         case .settings: return ","
         }
     }
@@ -98,6 +101,24 @@ public final class AppState: ObservableObject {
     
     // Sound & Haptics
     @Published public var soundEnabled: Bool = true
+    
+    // User Profile & Google Authentication
+    @Published public var isSignedInWithGoogle: Bool = UserDefaults.standard.bool(forKey: "Logtrackin_GoogleSignedIn") {
+        didSet { UserDefaults.standard.set(isSignedInWithGoogle, forKey: "Logtrackin_GoogleSignedIn") }
+    }
+    @Published public var googleUserName: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleUserName") ?? "Atharav Narang" {
+        didSet { UserDefaults.standard.set(googleUserName, forKey: "Logtrackin_GoogleUserName") }
+    }
+    @Published public var googleUserEmail: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleUserEmail") ?? "atharav.narang@gmail.com" {
+        didSet { UserDefaults.standard.set(googleUserEmail, forKey: "Logtrackin_GoogleUserEmail") }
+    }
+    @Published public var googleCalendarSyncEnabled: Bool = UserDefaults.standard.object(forKey: "Logtrackin_GoogleSyncEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(googleCalendarSyncEnabled, forKey: "Logtrackin_GoogleSyncEnabled") }
+    }
+    @Published public var lastGoogleSyncDate: Date? = Date()
+    @Published public var googleAuthToken: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleAuthToken") ?? "" {
+        didSet { UserDefaults.standard.set(googleAuthToken, forKey: "Logtrackin_GoogleAuthToken") }
+    }
     
     // Entry editing trigger
     @Published public var editingEntry: TimesheetEntry?

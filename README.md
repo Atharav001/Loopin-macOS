@@ -1,12 +1,18 @@
+<p align="center">
+  <img src="assets/logo.png" width="140" alt="Logtrackin App Icon" style="border-radius: 28px;" />
+</p>
+
 # Logtrackin — Native macOS Timesheet & Workspace App
 
-![macOS](https://img.shields.io/badge/Platform-macOS%2014%2B-blue.svg)
-![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)
-![SwiftUI](https://img.shields.io/badge/UI-SwiftUI%20%2B%20AppKit-purple.svg)
-![Database](https://img.shields.io/badge/Database-SQLite3-green.svg)
-![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-macOS%2014%2B-blue.svg" alt="macOS 14+" />
+  <img src="https://img.shields.io/badge/Swift-6.0-orange.svg" alt="Swift 6.0" />
+  <img src="https://img.shields.io/badge/UI-SwiftUI%20%2B%20AppKit-purple.svg" alt="SwiftUI + AppKit" />
+  <img src="https://img.shields.io/badge/Database-SQLite3-green.svg" alt="SQLite3" />
+  <img src="https://img.shields.io/badge/License-MIT-lightgrey.svg" alt="MIT License" />
+</p>
 
-**Logtrackin** is a production-grade, 100% native macOS timesheet and logbook workspace application built using **SwiftUI + AppKit + SQLite3**. It combines natural language task planning, an interactive Clockify-style 7×24 week calendar grid with drag-to-create/resize/move, a floating non-activating interval logging panel displaying exact time interval ranges (e.g. `6:00 PM – 7:00 PM`), a left vertical sidebar navigation, a 6-theme multi-theme engine (Clockify, TickTick, Material Dark, Standard Light), keyword auto-classification, deep work analytics, Pomodoro sprint tools, and quiet hours scheduling.
+**Logtrackin** is a production-grade, 100% native macOS timesheet and logbook workspace application built using **SwiftUI + AppKit + SQLite3**. It combines natural language task planning, an interactive Clockify-style 7×24 week calendar grid with drag-to-create/resize/move, a floating non-activating interval logging panel displaying exact time interval ranges (e.g. `6:00 PM – 7:00 PM`), a left vertical sidebar navigation, a 7-theme multi-theme engine (Clockify, TickTick, Tocklog Mobile, Material Dark, Standard Light) with a premium dropdown switcher, keyword auto-classification, deep work analytics, Pomodoro sprint tools, Google Calendar 2-way sync, and quiet hours scheduling.
 
 ---
 
@@ -15,23 +21,26 @@
 1. **100% Native macOS Architecture**:
    - Zero web views, Electron, or Tauri layers.
    - Real system traffic lights with fullSizeContentView and custom window dragging.
+   - Custom high-resolution retina squircle Dock icon (`AppIcon.icns`) matching the menu bar emblem.
    - Hard minimum window size enforced at 980 × 640 pt (default: 1180 × 760 pt).
    - Window pinning toggle (`window.level = .floating` / `.normal`).
    - Native macOS window appearance dynamically matches light/dark themes (`.aqua` / `.darkAqua`).
 
-2. **Left Vertical Sidebar Navigation**:
+2. **Left Vertical Sidebar Navigation & Profile**:
    - Quick action `+ New Entry` (Cmd+N).
-   - Instant switching between Week Calendar, Timesheet Rails, Analytics & Reports, Dictionary & Rules, Focus & Pomodoro, and Settings.
-   - Persistent footer with live 1-hour interval countdown, quick logging trigger, and pin-to-top toggle.
+   - Workspace profile pill linking directly to Account & Google Cloud Sync.
+   - Instant switching between Week Calendar, Timesheet Rails, Analytics & Reports, Dictionary & Rules, Focus & Pomodoro, Account & Cloud, and Settings.
+   - Persistent footer with quick theme dropdown switcher, live 1-hour interval countdown, and pin-to-top toggle.
 
-3. **6-Theme Multi-Theme Engine**:
+3. **7-Theme Multi-Theme Engine & Dropdown Switcher**:
+   - **Tocklog Dark (Mobile Modern)**: Obsidian dark `#14171A` with signature warm amber `#F59E0B` & gold `#FBBF24` accents.
    - **Clockify Dark**: Deep midnight slate `#0B0F19` with signature cyan accents.
    - **Clockify Light**: Soft grey canvas `#F4F5F7` with crisp white cards and cyan accents.
    - **TickTick Dark**: Warm slate `#1E2022` with royal blue accents.
    - **TickTick Light**: Modern white `#F6F7F9` with TickTick blue buttons.
    - **Normal Dark (Google/Microsoft)**: Material surfaces `#121212` with Google blue accents.
    - **Standard Light**: Pure white Apple/Google minimal light aesthetic.
-   - Full-hierarchy dynamic layer adaptation across cards, panels, pickers, and text.
+   - Controlled via interactive glass **Dropdown Menu** (`ThemeDropdownPicker`) with color dots and live preview.
 
 4. **Clockify-Style 7×24 Week Grid**:
    - Continuous mouse interaction with 15-minute time snapping.
