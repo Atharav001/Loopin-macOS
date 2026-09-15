@@ -98,3 +98,25 @@ swift run
 ./build_app.sh
 open Loopin.app
 ```
+
+---
+
+## Cross-Platform Architecture (macOS + Android + Cloud)
+
+### 1. Supabase Cross-Device Sync Engine
+- Real-time cloud sync with offline-first SQLite cache.
+- Local changes are recorded with `syncStatus` flags and synced in the background with Last-Write-Wins conflict resolution based on `updatedAt`.
+- Configurable directly from the Loopin Settings tab.
+
+### 2. Two-Way Google Calendar Integration
+- Automatically connects and writes to two dedicated Google Calendars:
+  - **Loopin Planned**: Planned timesheet blocks.
+  - **Loopin Logged**: Actual recorded work and activities.
+- Instantly reflects on standard Google Calendar mobile widgets (lock screen and home screen) without extra apps.
+
+### 3. Android Mobile Client (`/android`)
+- **UI**: Jetpack Compose with Dark Glass styling matching the macOS app.
+- **Local Storage**: Room Database mirroring the SQLite schema.
+- **Hourly Logging Service**: Android foreground service with a non-dismissible notification prompt.
+- **Inline Notification Reply**: Type what you did directly in the notification bar via Android `RemoteInput` without opening the app, or tap voice/skip.
+- **Local Rule Classifier**: Instant on-device classification into Productive, Neutral, or Wasteful categories (gaming, room scrolling, YouTube watching, binge watching).
