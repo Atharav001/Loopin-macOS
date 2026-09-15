@@ -61,5 +61,12 @@ public struct ContentView: View {
         .onAppear {
             SampleDataSeeder.seedDefaultRulesIfNeeded()
         }
+        .onChange(of: appState.showFloatingLoggingPanel) { _, isShown in
+            if isShown {
+                LoggingPanelController.shared.show()
+            } else {
+                LoggingPanelController.shared.close()
+            }
+        }
     }
 }
