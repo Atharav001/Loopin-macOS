@@ -32,6 +32,7 @@ public struct CategoryPreset: Identifiable, Hashable, Sendable {
 }
 
 public extension Color {
+    @MainActor
     static func forProductivity(_ prod: ProductivityType?) -> Color {
         guard let p = prod else { return Theme.neutral }
         switch p {
@@ -41,6 +42,7 @@ public extension Color {
         }
     }
     
+    @MainActor
     static func forCategory(_ categoryName: String?) -> Color {
         guard let cat = categoryName else { return Theme.textMuted }
         if let preset = CategoryPreset.defaults.first(where: { $0.name.lowercased() == cat.lowercased() }) {

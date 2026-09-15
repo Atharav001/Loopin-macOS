@@ -2,26 +2,28 @@ import SwiftUI
 
 public struct TimeGutterView: View {
     public let hourHeight: CGFloat
+    public let use24HourClock: Bool
     private let totalHours: Int = 24
     
-    public init(hourHeight: CGFloat = 48) {
+    public init(hourHeight: CGFloat = 48, use24HourClock: Bool = false) {
         self.hourHeight = hourHeight
+        self.use24HourClock = use24HourClock
     }
     
     public var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
             ForEach(0..<totalHours, id: \.self) { hour in
                 ZStack(alignment: .topTrailing) {
-                    Text(String(format: "%02d:00", hour))
-                        .font(Theme.caption)
+                    Text(formatHour(hour))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundColor(Theme.textMuted)
                         .padding(.trailing, 8)
-                        .offset(y: -7) // Center text with the top gridline
+                        .offset(y: -7) // Perfectly aligns baseline with the horizontal gridline
                 }
-                .frame(width: 52, height: hourHeight, alignment: .topTrailing)
+                .frame(width: 56, height: hourHeight, alignment: .topTrailing)
             }
         }
-        .frame(width: 52)
+        .frame(width: 56)
         .background(Theme.bgDark)
         .overlay(
             Rectangle()
@@ -29,5 +31,21 @@ public struct TimeGutterView: View {
                 .frame(width: 1),
             alignment: .trailing
         )
+    }
+    
+    private func formatHour(_ hour: Int) -> String {
+        if use24HourClock {
+            return String(format: "%02d:00", hour)
+        } else {
+            if hour == 0 {
+                return "12 AM"
+            } else if hour < 12 {
+                return "\(hour) AM"
+            } else if hour == 12 {
+                return "12 PM"
+            } else {
+                return "\(hour - 12) PM"
+            }
+        }
     }
 }

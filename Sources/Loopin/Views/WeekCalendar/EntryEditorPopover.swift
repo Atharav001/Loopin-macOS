@@ -108,40 +108,70 @@ public struct EntryEditorPopover: View {
                 }
             }
             
-            // Category Picker & Productivity Picker
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Category")
-                        .font(Theme.caption)
-                        .foregroundColor(Theme.textSecondary)
-                    
-                    Picker("", selection: $selectedCategory) {
-                        ForEach(CategoryPreset.defaults) { preset in
-                            Text(preset.name).tag(preset.name)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .padding(4)
-                    .background(Theme.bgDark)
-                    .cornerRadius(6)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
-                }
+            // Category Selection (Clean clickable chips)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Category")
+                    .font(Theme.caption)
+                    .foregroundColor(Theme.textSecondary)
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Productivity")
-                        .font(Theme.caption)
-                        .foregroundColor(Theme.textSecondary)
-                    
-                    Picker("", selection: $selectedProductivity) {
-                        ForEach(ProductivityType.allCases, id: \.self) { p in
-                            Text(p.displayName).tag(p)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(CategoryPreset.defaults) { preset in
+                            let isSelected = selectedCategory == preset.name
+                            Button(action: {
+                                selectedCategory = preset.name
+                            }) {
+                                Text(preset.name)
+                                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
+                                    .foregroundColor(isSelected ? .white : Theme.textSecondary)
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 4.5)
+                                    .background(isSelected ? Theme.accent : Theme.bgDark)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(isSelected ? Theme.accent : Theme.border, lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .pickerStyle(.menu)
-                    .padding(4)
-                    .background(Theme.bgDark)
-                    .cornerRadius(6)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
+                }
+            }
+            
+            // Productivity Selection (Segmented color chips)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Productivity Assessment")
+                    .font(Theme.caption)
+                    .foregroundColor(Theme.textSecondary)
+                
+                HStack(spacing: 8) {
+                    ForEach(ProductivityType.allCases, id: \.self) { p in
+                        let isSelected = selectedProductivity == p
+                        let color = Color.forProductivity(p)
+                        
+                        Button(action: {
+                            selectedProductivity = p
+                        }) {
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(color)
+                                    .frame(width: 7, height: 7)
+                                Text(p.displayName)
+                                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
+                                    .foregroundColor(isSelected ? .white : Theme.textSecondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(isSelected ? color.opacity(0.25) : Theme.bgDark)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(isSelected ? color : Theme.border, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
             
@@ -200,8 +230,8 @@ public struct EntryEditorPopover: View {
                 .disabled(rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .padding(20)
-        .frame(width: 380)
+        .padding(22)
+        .frame(width: 420)
         .background(Theme.bgCard)
         .cornerRadius(14)
         .overlay(

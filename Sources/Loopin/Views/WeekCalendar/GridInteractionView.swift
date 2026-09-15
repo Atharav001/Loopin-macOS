@@ -21,6 +21,10 @@ public final class InteractionNSView: NSView {
         wantsLayer = true
     }
     
+    public override var isFlipped: Bool {
+        return true
+    }
+    
     public override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         return true
     }

@@ -3,31 +3,34 @@ import Combine
 
 // MARK: - NavigationTab
 public enum NavigationTab: String, CaseIterable, Identifiable, Sendable {
-    case rails = "Rails"
     case weekCalendar = "Week Calendar"
+    case rails = "Timesheet Rails"
     case analytics = "Analytics & Reports"
-    case dictionary = "Dictionary"
-    case focusPrompts = "Focus & Prompts"
+    case dictionary = "Dictionary & Rules"
+    case focusPrompts = "Focus & Pomodoro"
+    case settings = "Settings"
     
     public var id: String { rawValue }
     
     public var iconName: String {
         switch self {
-        case .rails: return "timeline.selection"
         case .weekCalendar: return "calendar"
+        case .rails: return "timeline.selection"
         case .analytics: return "chart.bar.xaxis"
         case .dictionary: return "character.book.closed"
-        case .focusPrompts: return "slider.horizontal.3"
+        case .focusPrompts: return "timer"
+        case .settings: return "gearshape"
         }
     }
     
     public var shortcutNumber: String {
         switch self {
-        case .rails: return "1"
-        case .weekCalendar: return "2"
+        case .weekCalendar: return "1"
+        case .rails: return "2"
         case .analytics: return "3"
         case .dictionary: return "4"
         case .focusPrompts: return "5"
+        case .settings: return ","
         }
     }
 }
@@ -37,14 +40,43 @@ public enum NavigationTab: String, CaseIterable, Identifiable, Sendable {
 public final class AppState: ObservableObject {
     public static let shared = AppState()
     
-    @Published public var selectedTab: NavigationTab = .rails
+    @Published public var selectedTab: NavigationTab = .weekCalendar
     @Published public var isPinnedOnTop: Bool = false
     
-    // Interval Prompt state
-    @Published public var selectedIntervalMinutes: Int = 15
-    @Published public var timeRemainingInInterval: Int = 15 * 60
+    // Multi-Theme Selector (Default: Clockify Dark)
+    @Published public var currentTheme: AppTheme = {
+        if let saved = UserDefaults.standard.string(forKey: "Logtrackin_AppTheme"),
+           let theme = AppTheme(rawValue: saved) {
+            return theme
+        }
+        return .clockifyDark
+    }() {
+        didSet {
+            UserDefaults.standard.set(currentTheme.rawValue, forKey: "Logtrackin_AppTheme")
+        }
+    }
+    
+    // Interval Prompt state (Default: 1 hour)
+    @Published public var selectedIntervalMinutes: Int = 60
+    @Published public var timeRemainingInInterval: Int = 60 * 60
     @Published public var isTimerRunning: Bool = true
     @Published public var showFloatingLoggingPanel: Bool = false
+    
+    // Clock format: 12-hour vs 24-hour clock
+    @Published public var use24HourClock: Bool = false
+    
+    // Week start setting
+    @Published public var weekStartsOnMonday: Bool = true
+    
+    // Pomodoro preferences
+    @Published public var autoStartBreaks: Bool = false
+    
+    // Floating prompt window behavior
+    @Published public var intervalPromptFloatOverAllSpaces: Bool = true
+    
+    // Celebration breathing glow state
+    @Published public var triggerCelebrationGlow: Bool = false
+    @Published public var celebrationColor: Color = Color(red: 2/255, green: 136/255, blue: 235/255)
     
     // Quiet hours
     @Published public var quietHoursEnabled: Bool = true
@@ -72,6 +104,11 @@ public final class AppState: ObservableObject {
     @Published public var showEntryEditor: Bool = false
     
     private var countdownCancellable: AnyCancellable?
+    
+    public func triggerCelebration(color: Color? = nil) {
+        celebrationColor = color ?? Theme.accent
+        triggerCelebrationGlow = true
+    }
     
     public init() {
         startIntervalCountdown()

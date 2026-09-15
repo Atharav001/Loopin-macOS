@@ -42,14 +42,14 @@ public struct IntervalBannerView: View {
             
             // Interval preset buttons
             HStack(spacing: 6) {
-                ForEach([5, 10, 15, 25], id: \.self) { minutes in
+                ForEach([15, 30, 45, 60], id: \.self) { minutes in
                     let isSelected = appState.selectedIntervalMinutes == minutes
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             appState.setIntervalMinutes(minutes)
                         }
                     }) {
-                        Text("\(minutes)m")
+                        Text(minutes == 60 ? "1h" : "\(minutes)m")
                             .font(Theme.caption)
                             .fontWeight(isSelected ? .bold : .medium)
                             .foregroundColor(isSelected ? .white : Theme.textSecondary)

@@ -67,7 +67,7 @@ public struct FocusSettingsView: View {
                     .foregroundColor(Theme.accentLight)
             }
             
-            Text("Loopin periodically surfaces a lightweight, floating prompt asking what you've been working on, without stealing your keyboard focus.")
+            Text("Logtrackin periodically surfaces a lightweight, floating prompt asking what you've been working on, without stealing your keyboard focus.")
                 .font(Theme.caption)
                 .foregroundColor(Theme.textSecondary)
             
@@ -77,14 +77,14 @@ public struct FocusSettingsView: View {
                     .foregroundColor(Theme.textPrimary)
                 
                 HStack(spacing: 6) {
-                    ForEach([5, 10, 15, 25], id: \.self) { mins in
+                    ForEach([15, 30, 45, 60], id: \.self) { mins in
                         let isSel = appState.selectedIntervalMinutes == mins
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 appState.setIntervalMinutes(mins)
                             }
                         }) {
-                            Text("Every \(mins)m")
+                            Text(mins == 60 ? "1 Hour" : "\(mins)m")
                                 .font(Theme.caption)
                                 .fontWeight(isSel ? .bold : .medium)
                                 .foregroundColor(isSel ? .white : Theme.textSecondary)

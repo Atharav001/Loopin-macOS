@@ -11,12 +11,12 @@ public final class MenuBarManager: NSObject, @unchecked Sendable {
     public func setupMenuBar() {
         guard statusItem == nil else { return }
         
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Loopin")
-            button.imagePosition = .imageLeading
-            button.title = " Loopin"
+            button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Logtrackin")
+            button.imagePosition = .imageOnly
+            button.title = ""
         }
         
         let menu = NSMenu()
@@ -27,7 +27,7 @@ public final class MenuBarManager: NSObject, @unchecked Sendable {
         
         menu.addItem(NSMenuItem.separator())
         
-        let openItem = NSMenuItem(title: "Show Loopin Window", action: #selector(showMainWindow), keyEquivalent: "o")
+        let openItem = NSMenuItem(title: "Show Logtrackin Window", action: #selector(showMainWindow), keyEquivalent: "o")
         openItem.target = self
         menu.addItem(openItem)
         
@@ -37,7 +37,7 @@ public final class MenuBarManager: NSObject, @unchecked Sendable {
         
         menu.addItem(NSMenuItem.separator())
         
-        let quitItem = NSMenuItem(title: "Quit Loopin", action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit Logtrackin", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
         
@@ -50,7 +50,7 @@ public final class MenuBarManager: NSObject, @unchecked Sendable {
     
     @objc private func showMainWindow() {
         NSApp.activate(ignoringOtherApps: true)
-        if let window = NSApp.windows.first(where: { $0.title == "Loopin" }) {
+        if let window = NSApp.windows.first(where: { $0.title == "Logtrackin" }) {
             window.makeKeyAndOrderFront(nil)
         }
     }

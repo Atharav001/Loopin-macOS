@@ -4,14 +4,15 @@ public struct DayColumnView: View {
     public let date: Date
     public let entries: [TimesheetEntry]
     public let hourHeight: CGFloat
+    public let columnWidth: CGFloat
     public let isToday: Bool
+    public let use24HourClock: Bool
     
     public var onSelectEntry: ((TimesheetEntry) -> Void)?
     public var onCreateRange: ((Date, Date) -> Void)?
     public var onUpdateEntryTime: ((TimesheetEntry, Date, Date) -> Void)?
     
     @State private var dragSelection: (start: CGFloat, current: CGFloat)?
-    @State private var resizingEntry: (entry: TimesheetEntry, isTop: Bool, originalY: CGFloat)?
     
     private let totalHours: Int = 24
     
@@ -19,7 +20,9 @@ public struct DayColumnView: View {
         date: Date,
         entries: [TimesheetEntry],
         hourHeight: CGFloat = 48,
+        columnWidth: CGFloat = 140,
         isToday: Bool = false,
+        use24HourClock: Bool = false,
         onSelectEntry: ((TimesheetEntry) -> Void)? = nil,
         onCreateRange: ((Date, Date) -> Void)? = nil,
         onUpdateEntryTime: ((TimesheetEntry, Date, Date) -> Void)? = nil
@@ -27,7 +30,9 @@ public struct DayColumnView: View {
         self.date = date
         self.entries = entries
         self.hourHeight = hourHeight
+        self.columnWidth = columnWidth
         self.isToday = isToday
+        self.use24HourClock = use24HourClock
         self.onSelectEntry = onSelectEntry
         self.onCreateRange = onCreateRange
         self.onUpdateEntryTime = onUpdateEntryTime
@@ -39,7 +44,7 @@ public struct DayColumnView: View {
     
     public var body: some View {
         ZStack(alignment: .topLeading) {
-            // Background Grid Lines
+            // 1. Background Grid Lines
             VStack(spacing: 0) {
                 ForEach(0..<totalHours, id: \.self) { _ in
                     VStack(spacing: 0) {
@@ -56,24 +61,55 @@ public struct DayColumnView: View {
                     .frame(height: hourHeight)
                 }
             }
-            .frame(height: columnHeight)
-            .background(isToday ? Theme.accent.opacity(0.02) : Color.clear)
+            .frame(width: columnWidth, height: columnHeight)
+            .background(isToday ? Theme.accent.opacity(0.03) : Color.clear)
             
-            // Rendered Entry Blocks
+            // 2. Native Click & Drag Gesture Hit Area
+            Color.clear
+                .frame(width: columnWidth, height: columnHeight)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                        .onChanged { value in
+                            let startY = snapYTo15Min(value.startLocation.y)
+                            let currentY = snapYTo15Min(value.location.y)
+                            dragSelection = (start: startY, current: currentY)
+                        }
+                        .onEnded { value in
+                            let topY = min(value.startLocation.y, value.location.y)
+                            let bottomY = max(value.startLocation.y, value.location.y)
+                            let snappedTop = snapYTo15Min(topY)
+                            let snappedBottom = snapYTo15Min(bottomY)
+                            
+                            let startDate = dateFromY(snappedTop)
+                            var endDate = dateFromY(snappedBottom)
+                            
+                            // If clicked without dragging (or dragged less than 15 mins), create a 30-minute block
+                            if endDate <= startDate || abs(bottomY - topY) < 12 {
+                                endDate = Calendar.current.date(byAdding: .minute, value: 30, to: startDate) ?? startDate.addingTimeInterval(1800)
+                            }
+                            
+                            dragSelection = nil
+                            onCreateRange?(startDate, endDate)
+                        }
+                )
+            
+            // 3. Rendered Entry Blocks
             ForEach(entries) { entry in
-                let (yOffset, _) = computeYPosition(for: entry)
+                let (yOffset, h) = computeYPosition(for: entry)
                 EntryBlockView(
                     entry: entry,
                     hourHeight: hourHeight,
+                    use24HourClock: use24HourClock,
                     onSelect: { selected in
                         onSelectEntry?(selected)
                     }
                 )
-                .offset(y: yOffset)
-                .padding(.horizontal, 2)
+                .frame(width: max(40, columnWidth - 4), height: h)
+                .offset(x: 2, y: yOffset)
             }
             
-            // Live Drag-to-Create Selection Rectangle
+            // 4. Clockify Live Drag-to-Create Selection Block
             if let drag = dragSelection {
                 let topY = min(drag.start, drag.current)
                 let height = max(16, abs(drag.current - drag.start))
@@ -81,31 +117,52 @@ public struct DayColumnView: View {
                 let snappedH = max(hourHeight * 0.25, snapYTo15Min(height))
                 
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Theme.accent.opacity(0.3))
+                    .fill(Theme.bgCard.opacity(0.95))
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(Theme.accentLight, lineWidth: 1.5)
+                            .stroke(Theme.accent, lineWidth: 1.5)
                     )
                     .overlay(
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("New Task")
-                                .font(Theme.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                            Text(formatTimeRange(startY: snapped, height: snappedH))
-                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                                .foregroundColor(Theme.accentLight)
-                        }
-                        .padding(6),
+                        HStack(spacing: 0) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Theme.accent)
+                                .frame(width: 4)
+                                .padding(.vertical, 3)
+                                .padding(.leading, 3)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Text("New Time Entry")
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    
+                                    Spacer(minLength: 0)
+                                    
+                                    Text(formatDuration(startY: snapped, height: snappedH))
+                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .foregroundColor(Theme.accentLight)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Theme.accent.opacity(0.2))
+                                        .cornerRadius(3)
+                                }
+                                
+                                Text(formatTimeRange(startY: snapped, height: snappedH))
+                                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                    .foregroundColor(Theme.textSecondary)
+                            }
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                        },
                         alignment: .topLeading
                     )
-                    .frame(height: snappedH)
-                    .offset(y: snapped)
-                    .padding(.horizontal, 2)
-                    .animation(.none, value: drag.current)
+                    .frame(width: max(40, columnWidth - 4), height: snappedH)
+                    .offset(x: 2, y: snapped)
+                    .shadow(color: Theme.accent.opacity(0.35), radius: 6)
+                    .allowsHitTesting(false)
             }
             
-            // Live Red "Now" Line on Today's Column
+            // 5. Live Red "Now" Line on Today's Column
             if isToday {
                 let nowY = computeCurrentTimeY()
                 if nowY >= 0 && nowY <= columnHeight {
@@ -117,44 +174,14 @@ public struct DayColumnView: View {
                             .fill(Theme.nowLine)
                             .frame(height: 2)
                     }
+                    .frame(width: columnWidth)
                     .offset(y: nowY - 3)
                     .shadow(color: Theme.nowLine.opacity(0.8), radius: 4)
+                    .allowsHitTesting(false)
                 }
             }
-            
-            // AppKit Mouse Drag Interceptor Layer
-            GridInteractionView(
-                onDragBegan: { point in
-                    let snappedY = snapYTo15Min(point.y)
-                    dragSelection = (start: snappedY, current: snappedY)
-                },
-                onDragChanged: { start, current in
-                    let snappedCurrent = snapYTo15Min(current.y)
-                    dragSelection = (start: start.y, current: snappedCurrent)
-                },
-                onDragEnded: { start, end in
-                    let topY = min(start.y, end.y)
-                    let bottomY = max(start.y, end.y)
-                    let startDate = dateFromY(topY)
-                    var endDate = dateFromY(bottomY)
-                    
-                    if endDate <= startDate {
-                        endDate = Calendar.current.date(byAdding: .minute, value: 30, to: startDate) ?? startDate.addingTimeInterval(1800)
-                    }
-                    
-                    dragSelection = nil
-                    onCreateRange?(startDate, endDate)
-                },
-                onSingleClick: { point in
-                    let startDate = dateFromY(point.y)
-                    let endDate = Calendar.current.date(byAdding: .minute, value: 30, to: startDate) ?? startDate.addingTimeInterval(1800)
-                    onCreateRange?(startDate, endDate)
-                }
-            )
-            .opacity(0.01) // Transparent mouse receiver
         }
-        .frame(minWidth: 140)
-        .frame(height: columnHeight)
+        .frame(width: columnWidth, height: columnHeight)
         .overlay(
             Rectangle()
                 .fill(Theme.border)
@@ -190,8 +217,23 @@ public struct DayColumnView: View {
         let start = dateFromY(startY)
         let end = dateFromY(startY + height)
         let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
+        formatter.dateFormat = use24HourClock ? "HH:mm" : "h:mm a"
         return "\(formatter.string(from: start)) – \(formatter.string(from: end))"
+    }
+    
+    private func formatDuration(startY: CGFloat, height: CGFloat) -> String {
+        let start = dateFromY(startY)
+        let end = dateFromY(startY + height)
+        let totalMins = max(15, Int(end.timeIntervalSince(start) / 60))
+        let hrs = totalMins / 60
+        let mins = totalMins % 60
+        if hrs > 0 && mins > 0 {
+            return "\(hrs)h \(mins)m"
+        } else if hrs > 0 {
+            return "\(hrs)h"
+        } else {
+            return "\(mins)m"
+        }
     }
     
     private func computeCurrentTimeY() -> CGFloat {

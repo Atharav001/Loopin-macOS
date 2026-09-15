@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== Building Loopin Native macOS App ==="
+echo "=== Building Logtrackin Native macOS App ==="
 swift build -c release
 
-APP_NAME="Loopin"
+APP_NAME="Logtrackin"
 BUNDLE_DIR="${APP_NAME}.app"
 CONTENTS_DIR="${BUNDLE_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
@@ -16,7 +16,7 @@ mkdir -p "${MACOS_DIR}"
 mkdir -p "${RESOURCES_DIR}"
 
 BIN_PATH=$(swift build -c release --show-bin-path)
-cp "${BIN_PATH}/${APP_NAME}" "${MACOS_DIR}/${APP_NAME}"
+cp "${BIN_PATH}/Loopin" "${MACOS_DIR}/${APP_NAME}"
 chmod +x "${MACOS_DIR}/${APP_NAME}"
 
 cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
@@ -25,13 +25,13 @@ cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>Loopin</string>
+    <string>Logtrackin</string>
     <key>CFBundleIdentifier</key>
-    <string>com.atharav.loopin</string>
+    <string>com.atharav.logtrackin</string>
     <key>CFBundleName</key>
-    <string>Loopin</string>
+    <string>Logtrackin</string>
     <key>CFBundleDisplayName</key>
-    <string>Loopin</string>
+    <string>Logtrackin</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -45,12 +45,12 @@ cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.productivity</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Loopin uses on-device speech recognition to let you log your activities by voice.</string>
+    <string>Logtrackin uses on-device speech recognition to let you log your activities by voice.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Loopin uses your microphone for voice activity logging.</string>
+    <string>Logtrackin uses your microphone for voice activity logging.</string>
 </dict>
 </plist>
 EOF
 
 echo "✓ Successfully built ${BUNDLE_DIR}!"
-echo "Run with: open Loopin.app"
+echo "Run with: open Logtrackin.app"

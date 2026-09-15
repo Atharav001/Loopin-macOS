@@ -41,18 +41,37 @@ public struct WindowAccessor: NSViewRepresentable {
         
         // System title bar with fullSizeContentView
         window.titlebarAppearsTransparent = true
-        window.titleVisibility = .visible
-        window.title = "Loopin"
+        window.titleVisibility = .hidden
+        window.title = "Logtrackin"
         _ = window.styleMask.insert(.fullSizeContentView)
         
         // Enforce min and default size
-        window.minSize = NSSize(width: 980, height: 640)
+        window.minSize = NSSize(width: 1060, height: 680)
         
         // Window level
         window.level = isPinned ? .floating : .normal
         
         // Enable zooming/resizing and standard traffic lights
         window.styleMask.insert([.titled, .closable, .miniaturizable, .resizable])
+    }
+}
+
+// MARK: - WindowDragView
+/// An NSView that allows moving the window by clicking and dragging on custom navigation/header areas
+public struct WindowDragArea: NSViewRepresentable {
+    public init() {}
+    
+    public func makeNSView(context: Context) -> DraggingNSView {
+        let view = DraggingNSView()
+        return view
+    }
+    
+    public func updateNSView(_ nsView: DraggingNSView, context: Context) {}
+}
+
+public final class DraggingNSView: NSView {
+    public override var mouseDownCanMoveWindow: Bool {
+        return true
     }
 }
 

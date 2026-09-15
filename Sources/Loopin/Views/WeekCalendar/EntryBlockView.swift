@@ -4,6 +4,7 @@ import AppKit
 public struct EntryBlockView: View {
     public let entry: TimesheetEntry
     public let hourHeight: CGFloat
+    public let use24HourClock: Bool
     public var onSelect: ((TimesheetEntry) -> Void)?
     public var onResizeTop: ((TimesheetEntry, CGFloat) -> Void)?
     public var onResizeBottom: ((TimesheetEntry, CGFloat) -> Void)?
@@ -22,6 +23,7 @@ public struct EntryBlockView: View {
     public init(
         entry: TimesheetEntry,
         hourHeight: CGFloat = 48,
+        use24HourClock: Bool = false,
         onSelect: ((TimesheetEntry) -> Void)? = nil,
         onResizeTop: ((TimesheetEntry, CGFloat) -> Void)? = nil,
         onResizeBottom: ((TimesheetEntry, CGFloat) -> Void)? = nil,
@@ -29,6 +31,7 @@ public struct EntryBlockView: View {
     ) {
         self.entry = entry
         self.hourHeight = hourHeight
+        self.use24HourClock = use24HourClock
         self.onSelect = onSelect
         self.onResizeTop = onResizeTop
         self.onResizeBottom = onResizeBottom
@@ -49,7 +52,13 @@ public struct EntryBlockView: View {
     
     private var computedHeight: CGFloat {
         let durationHours = CGFloat(entry.duration) / 3600.0
-        return max(22, durationHours * hourHeight)
+        return max(24, durationHours * hourHeight)
+    }
+    
+    private var formattedTimeRange: String {
+        let f = DateFormatter()
+        f.dateFormat = use24HourClock ? "HH:mm" : "h:mm a"
+        return "\(f.string(from: entry.startAt)) – \(f.string(from: entry.endAt))"
     }
     
     public var body: some View {
@@ -57,56 +66,68 @@ public struct EntryBlockView: View {
             // Background & Border
             if isPlanned {
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(blockColor.opacity(isHovered ? 0.25 : 0.15))
+                    .fill(Theme.bgCard.opacity(0.9))
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .strokeBorder(blockColor, style: StrokeStyle(lineWidth: 1.5, dash: [4, 2]))
+                            .strokeBorder(blockColor, style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
                     )
             } else {
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(blockColor.opacity(isHovered ? 0.95 : 0.85))
+                    .fill(Theme.bgCard)
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(blockColor, lineWidth: 1)
+                            .stroke(blockColor.opacity(isHovered ? 0.85 : 0.35), lineWidth: 1)
                     )
             }
             
-            // Content
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Text(entry.rawText)
-                        .font(Theme.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .lineLimit(computedHeight < 40 ? 1 : 2)
-                    
-                    Spacer(minLength: 0)
-                    
-                    Text(entry.formattedDuration)
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundColor(Color.white.opacity(0.85))
-                }
+            // Left Clockify Color Strip
+            HStack(spacing: 0) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(blockColor)
+                    .frame(width: 3.5)
+                    .padding(.vertical, 3)
+                    .padding(.leading, 3)
                 
-                if computedHeight >= 45 {
+                // Content
+                VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        if let category = entry.category {
-                            Text(category)
-                                .font(.system(size: 9, weight: .medium))
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Color.black.opacity(0.2))
-                                .cornerRadius(3)
-                        }
+                        Text(entry.rawText.isEmpty ? "Untitled" : entry.rawText)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(Theme.textPrimary)
+                            .lineLimit(computedHeight < 40 ? 1 : 2)
                         
-                        Text(entry.formattedTimeRange)
-                            .font(.system(size: 9))
-                            .foregroundColor(Color.white.opacity(0.7))
+                        Spacer(minLength: 0)
+                        
+                        Text(entry.formattedDuration)
+                            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                            .foregroundColor(blockColor)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(blockColor.opacity(0.16))
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
                     }
-                    .foregroundColor(Color.white.opacity(0.9))
+                    
+                    if computedHeight >= 42 {
+                        HStack(spacing: 4) {
+                            if let category = entry.category {
+                                Text(category)
+                                    .font(.system(size: 8.5, weight: .medium))
+                                    .foregroundColor(Theme.textSecondary)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Theme.bgDark)
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                            }
+                            
+                            Text(formattedTimeRange)
+                                .font(.system(size: 8.5, design: .monospaced))
+                                .foregroundColor(Theme.textMuted)
+                        }
+                    }
                 }
+                .padding(.horizontal, 5)
+                .padding(.vertical, 3)
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
             
             // Top Edge Resize Handle Overlay (6pt hit-zone)
             VStack {
@@ -150,8 +171,10 @@ public struct EntryBlockView: View {
                 NSCursor.arrow.set()
             }
         }
-        .onTapGesture {
-            onSelect?(entry)
-        }
+        .highPriorityGesture(
+            TapGesture().onEnded {
+                onSelect?(entry)
+            }
+        )
     }
 }

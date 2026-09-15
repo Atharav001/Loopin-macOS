@@ -21,7 +21,7 @@ public struct LoopinApp: App {
     public init() {}
     
     public var body: some Scene {
-        Window("Loopin", id: "main") {
+        Window("Logtrackin", id: "main") {
             ContentView()
         }
         .defaultSize(width: 1180, height: 760)
@@ -35,8 +35,8 @@ public struct LoopinApp: App {
                 .keyboardShortcut(",", modifiers: .command)
             }
             CommandGroup(replacing: .help) {
-                Button("Loopin Help") {
-                    if let url = URL(string: "https://github.com/Atharav001/Loopin-macOS") {
+                Button("Logtrackin Help") {
+                    if let url = URL(string: "https://github.com/Atharav001/Logtrackin") {
                         NSWorkspace.shared.open(url)
                     }
                 }

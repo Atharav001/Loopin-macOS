@@ -12,7 +12,7 @@ public final class LoggingPanel: NSPanel, @unchecked Sendable {
         )
         
         self.isFloatingPanel = true
-        self.level = .floating
+        self.level = .screenSaver // High window level to ensure visibility over full-screen Spaces
         self.becomesKeyOnlyIfNeeded = true
         self.hidesOnDeactivate = false
         self.isMovableByWindowBackground = true

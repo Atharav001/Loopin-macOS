@@ -10,7 +10,7 @@ public struct LoggingPanelContentView: View {
     
     var onDismiss: (() -> Void)?
     
-    private let quickSuggestions = ["Coding", "Meeting", "Design", "Research", "Break", "Social Media", "Planning"]
+    private let quickSuggestions = ["Coding", "Deep Work", "Meeting", "Planning", "Research", "YouTube Watching", "Gaming", "Break"]
     
     public init(onDismiss: (() -> Void)? = nil) {
         self.onDismiss = onDismiss
@@ -34,20 +34,24 @@ public struct LoggingPanelContentView: View {
                                 .frame(width: 7, height: 7)
                         }
                         
-                        Text("What did you just work on?")
+                        Text("What did you work on?")
                             .font(Theme.titleSmall)
                             .foregroundColor(Theme.textPrimary)
                     }
                     
                     Spacer()
                     
-                    Text("Past \(appState.selectedIntervalMinutes)m")
-                        .font(Theme.caption)
-                        .foregroundColor(Theme.accentLight)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Theme.accent.opacity(0.15))
-                        .cornerRadius(6)
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 9))
+                        Text(formattedTimeInterval)
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    }
+                    .foregroundColor(Theme.accentLight)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3.5)
+                    .background(Theme.accent.opacity(0.15))
+                    .cornerRadius(6)
                     
                     Button(action: {
                         dismissPanel()
@@ -201,6 +205,9 @@ public struct LoggingPanelContentView: View {
         
         DatabaseManager.shared.insertEntry(entry)
         
+        // Trigger breathing glowing celebration effect around the window
+        appState.triggerCelebration(color: prod == .productive ? Theme.productive : Theme.accent)
+        
         // Learn rule automatically
         ClassifierEngine.learnRule(for: text, category: category, productivity: prod)
         
@@ -238,6 +245,15 @@ public struct LoggingPanelContentView: View {
         if isListening {
             inputText = "Pair programming on SwiftUI"
         }
+    }
+    
+    private var formattedTimeInterval: String {
+        let now = Date()
+        let intervalSecs = Double(appState.selectedIntervalMinutes * 60)
+        let start = now.addingTimeInterval(-intervalSecs)
+        let f = DateFormatter()
+        f.dateFormat = appState.use24HourClock ? "HH:mm" : "h:mm a"
+        return "\(f.string(from: start)) – \(f.string(from: now))"
     }
     
     private func dismissPanel() {

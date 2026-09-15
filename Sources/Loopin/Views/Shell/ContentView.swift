@@ -19,9 +19,9 @@ public struct ContentView: View {
                 .frame(width: 0, height: 0)
                 .opacity(0)
             
-            VStack(spacing: 0) {
-                // Top Custom Tab Navigation Bar
-                TabBarView(
+            HStack(spacing: 0) {
+                // Left Vertical Sidebar Navigation
+                SidebarView(
                     isPinnedOnTop: $isPinnedOnTop,
                     onTogglePin: {
                         isPinnedOnTop.toggle()
@@ -33,25 +33,28 @@ public struct ContentView: View {
                     }
                 )
                 
-                // Active Screen Body driven by @State selectedTab
+                // Active Screen Body driven by appState.selectedTab
                 ZStack {
                     switch appState.selectedTab {
-                    case .rails:
-                        RailsView()
                     case .weekCalendar:
                         WeekCalendarView()
+                    case .rails:
+                        RailsView()
                     case .analytics:
                         AnalyticsView()
                     case .dictionary:
                         DictionaryView()
                     case .focusPrompts:
                         FocusSettingsView()
+                    case .settings:
+                        SettingsView()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(minWidth: 980, minHeight: 640)
+        .ambientCelebrationGlow(isTriggered: $appState.triggerCelebrationGlow, glowColor: appState.celebrationColor)
         .sheet(isPresented: $appState.showEntryEditor) {
             EntryEditorPopover(
                 entry: $appState.editingEntry,
