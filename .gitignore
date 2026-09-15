@@ -21,3 +21,8 @@ timeline.db
 loopin.sqlite
 loopin.sqlite-shm
 loopin.sqlite-wal
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
