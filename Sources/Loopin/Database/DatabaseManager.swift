@@ -5,6 +5,7 @@ import SQLite3
 public final class DatabaseManager: @unchecked Sendable {
     public static let shared = DatabaseManager()
     public static let didChangeNotification = Notification.Name("DatabaseManagerDidChangeNotification")
+    public static let syncStatusDidChangeNotification = Notification.Name("SyncStatusDidChangeNotification")
     
     private var db: OpaquePointer?
     private let queue = DispatchQueue(label: "com.loopin.database", qos: .userInitiated)
@@ -26,6 +27,7 @@ public final class DatabaseManager: @unchecked Sendable {
         
         openDatabase()
         createTables()
+        runMigrations()
     }
     
     deinit {
@@ -52,11 +54,15 @@ public final class DatabaseManager: @unchecked Sendable {
             category TEXT,
             subcategory TEXT,
             productivity TEXT,
+            gcal_event_id TEXT,
+            device_id TEXT DEFAULT 'macOS',
+            is_synced INTEGER DEFAULT 0,
             updated_at REAL NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_entries_start_at ON timesheet_entries(start_at);
         CREATE INDEX IF NOT EXISTS idx_entries_end_at ON timesheet_entries(end_at);
         CREATE INDEX IF NOT EXISTS idx_entries_kind ON timesheet_entries(kind);
+        CREATE INDEX IF NOT EXISTS idx_entries_synced ON timesheet_entries(is_synced);
         """
         
         let createRulesSQL = """
@@ -77,11 +83,24 @@ public final class DatabaseManager: @unchecked Sendable {
         }
     }
     
+    private func runMigrations() {
+        queue.sync {
+            // Safely attempt adding columns if table already existed from Phase 1
+            _ = self.execute(sql: "ALTER TABLE timesheet_entries ADD COLUMN gcal_event_id TEXT;")
+            _ = self.execute(sql: "ALTER TABLE timesheet_entries ADD COLUMN device_id TEXT DEFAULT 'macOS';")
+            _ = self.execute(sql: "ALTER TABLE timesheet_entries ADD COLUMN is_synced INTEGER DEFAULT 0;")
+        }
+    }
+    
     private func execute(sql: String) -> Bool {
         var errMsg: UnsafeMutablePointer<CChar>?
         if sqlite3_exec(db, sql, nil, nil, &errMsg) != SQLITE_OK {
             if let msg = errMsg {
-                print("SQLite Exec Error: \(String(cString: msg))")
+                let errStr = String(cString: msg)
+                // Ignore "duplicate column name" harmless error during migration
+                if !errStr.contains("duplicate column") {
+                    print("SQLite Exec Error: \(errStr)")
+                }
                 sqlite3_free(errMsg)
             }
             return false
@@ -101,8 +120,8 @@ public final class DatabaseManager: @unchecked Sendable {
         queue.sync {
             let sql = """
             INSERT OR REPLACE INTO timesheet_entries 
-            (id, kind, start_at, end_at, raw_text, input_method, category, subcategory, productivity, updated_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            (id, kind, start_at, end_at, raw_text, input_method, category, subcategory, productivity, gcal_event_id, device_id, is_synced, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """
             var stmt: OpaquePointer?
             if sqlite3_prepare_v2(self.db, sql, -1, &stmt, nil) == SQLITE_OK {
@@ -131,7 +150,15 @@ public final class DatabaseManager: @unchecked Sendable {
                     sqlite3_bind_null(stmt, 9)
                 }
                 
-                sqlite3_bind_double(stmt, 10, entry.updatedAt.timeIntervalSince1970)
+                if let gcal = entry.gcalEventId {
+                    sqlite3_bind_text(stmt, 10, (gcal as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(stmt, 10)
+                }
+                
+                sqlite3_bind_text(stmt, 11, (entry.deviceId as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(stmt, 12, entry.isSynced ? 1 : 0)
+                sqlite3_bind_double(stmt, 13, entry.updatedAt.timeIntervalSince1970)
                 
                 if sqlite3_step(stmt) != SQLITE_DONE {
                     print("Error inserting entry: \(String(cString: sqlite3_errmsg(self.db)))")
@@ -161,7 +188,7 @@ public final class DatabaseManager: @unchecked Sendable {
     
     public func fetchEntry(id: String) -> TimesheetEntry? {
         return queue.sync {
-            let sql = "SELECT id, kind, start_at, end_at, raw_text, input_method, category, subcategory, productivity, updated_at FROM timesheet_entries WHERE id = ? LIMIT 1;"
+            let sql = "SELECT id, kind, start_at, end_at, raw_text, input_method, category, subcategory, productivity, gcal_event_id, device_id, is_synced, updated_at FROM timesheet_entries WHERE id = ? LIMIT 1;"
             var stmt: OpaquePointer?
             var entry: TimesheetEntry?
             
@@ -178,7 +205,7 @@ public final class DatabaseManager: @unchecked Sendable {
     
     public func fetchAllEntries() -> [TimesheetEntry] {
         return queue.sync {
-            let sql = "SELECT id, kind, start_at, end_at, raw_text, input_method, category, subcategory, productivity, updated_at FROM timesheet_entries ORDER BY start_at ASC;"
+            let sql = "SELECT id, kind, start_at, end_at, raw_text, input_method, category, subcategory, productivity, gcal_event_id, device_id, is_synced, updated_at FROM timesheet_entries ORDER BY start_at ASC;"
             var stmt: OpaquePointer?
             var results: [TimesheetEntry] = []
             
@@ -191,6 +218,41 @@ public final class DatabaseManager: @unchecked Sendable {
             }
             sqlite3_finalize(stmt)
             return results
+        }
+    }
+    
+    public func fetchPendingSyncEntries() -> [TimesheetEntry] {
+        return queue.sync {
+            let sql = "SELECT id, kind, start_at, end_at, raw_text, input_method, category, subcategory, productivity, gcal_event_id, device_id, is_synced, updated_at FROM timesheet_entries WHERE is_synced = 0 ORDER BY updated_at ASC;"
+            var stmt: OpaquePointer?
+            var results: [TimesheetEntry] = []
+            
+            if sqlite3_prepare_v2(self.db, sql, -1, &stmt, nil) == SQLITE_OK {
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    if let entry = parseEntryRow(stmt) {
+                        results.append(entry)
+                    }
+                }
+            }
+            sqlite3_finalize(stmt)
+            return results
+        }
+    }
+    
+    public func markEntrySynced(id: String, gcalEventId: String? = nil) {
+        queue.sync {
+            let sql = "UPDATE timesheet_entries SET is_synced = 1, gcal_event_id = COALESCE(?, gcal_event_id) WHERE id = ?;"
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(self.db, sql, -1, &stmt, nil) == SQLITE_OK {
+                if let gcal = gcalEventId {
+                    sqlite3_bind_text(stmt, 1, (gcal as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(stmt, 1)
+                }
+                sqlite3_bind_text(stmt, 2, (id as NSString).utf8String, -1, nil)
+                _ = sqlite3_step(stmt)
+            }
+            sqlite3_finalize(stmt)
         }
     }
     
@@ -215,7 +277,7 @@ public final class DatabaseManager: @unchecked Sendable {
     public func fetchEntriesInRange(start: Date, end: Date) -> [TimesheetEntry] {
         return queue.sync {
             let sql = """
-            SELECT id, kind, start_at, end_at, raw_text, input_method, category, subcategory, productivity, updated_at 
+            SELECT id, kind, start_at, end_at, raw_text, input_method, category, subcategory, productivity, gcal_event_id, device_id, is_synced, updated_at 
             FROM timesheet_entries 
             WHERE (start_at >= ? AND start_at < ?) OR (end_at > ? AND end_at <= ?) OR (start_at <= ? AND end_at >= ?)
             ORDER BY start_at ASC;
@@ -270,7 +332,18 @@ public final class DatabaseManager: @unchecked Sendable {
             productivity = String(cString: prodPtr)
         }
         
-        let updatedAt = Date(timeIntervalSince1970: sqlite3_column_double(stmt, 9))
+        var gcalEventId: String?
+        if let gcalPtr = sqlite3_column_text(stmt, 9) {
+            gcalEventId = String(cString: gcalPtr)
+        }
+        
+        var deviceId = "macOS"
+        if let devPtr = sqlite3_column_text(stmt, 10) {
+            deviceId = String(cString: devPtr)
+        }
+        
+        let isSynced = sqlite3_column_int(stmt, 11) == 1
+        let updatedAt = Date(timeIntervalSince1970: sqlite3_column_double(stmt, 12))
         
         return TimesheetEntry(
             id: id,
@@ -282,6 +355,9 @@ public final class DatabaseManager: @unchecked Sendable {
             category: category,
             subcategory: subcategory,
             productivity: productivity,
+            gcalEventId: gcalEventId,
+            deviceId: deviceId,
+            isSynced: isSynced,
             updatedAt: updatedAt
         )
     }

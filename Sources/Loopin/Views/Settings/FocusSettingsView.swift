@@ -31,6 +31,9 @@ public struct FocusSettingsView: View {
                 // Pomodoro Focus Timer Section
                 PomodoroView()
                 
+                // Cloud & Multi-Device Sync Section
+                cloudSyncCard
+                
                 // Sound & Feedback Section
                 soundOptionsCard
                 
@@ -176,6 +179,127 @@ public struct FocusSettingsView: View {
                     Spacer()
                 }
                 .padding(.top, 4)
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 14)
+    }
+    
+    // MARK: - Cloud Sync Card
+    private var cloudSyncCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "cloud.fill")
+                        .foregroundColor(Theme.accentLight)
+                    Text("Supabase Cloud & Multi-Device Sync")
+                        .font(Theme.titleSmall)
+                        .foregroundColor(Theme.textPrimary)
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(SyncEngine.shared.syncStatus == .unconfigured ? Color.gray : Theme.productive)
+                        .frame(width: 7, height: 7)
+                    Text(SyncEngine.shared.syncStatus.displayText)
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.textSecondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Theme.bgDark)
+                .cornerRadius(6)
+            }
+            
+            Text("Syncs planned and logged timesheets across Mac, Android, and web with real-time PostgreSQL + RLS.")
+                .font(Theme.caption)
+                .foregroundColor(Theme.textSecondary)
+            
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    Text("Project URL:")
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.textSecondary)
+                        .frame(width: 80, alignment: .leading)
+                    
+                    TextField("https://your-project.supabase.co", text: Binding(
+                        get: { SupabaseConfig.shared.projectUrl },
+                        set: { SupabaseConfig.shared.projectUrl = $0; SyncEngine.shared.checkConfiguration() }
+                    ))
+                    .textFieldStyle(.plain)
+                    .font(Theme.body)
+                    .padding(6)
+                    .background(Theme.bgDark)
+                    .cornerRadius(6)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
+                }
+                
+                HStack(spacing: 10) {
+                    Text("Anon Key:")
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.textSecondary)
+                        .frame(width: 80, alignment: .leading)
+                    
+                    SecureField("Supabase anon/public API key", text: Binding(
+                        get: { SupabaseConfig.shared.anonApiKey },
+                        set: { SupabaseConfig.shared.anonApiKey = $0; SyncEngine.shared.checkConfiguration() }
+                    ))
+                    .textFieldStyle(.plain)
+                    .font(Theme.body)
+                    .padding(6)
+                    .background(Theme.bgDark)
+                    .cornerRadius(6)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
+                }
+            }
+            
+            HStack(spacing: 16) {
+                Toggle("Enable Background Auto-Sync", isOn: Binding(
+                    get: { SupabaseConfig.shared.isAutoSyncEnabled },
+                    set: { enabled in
+                        SupabaseConfig.shared.isAutoSyncEnabled = enabled
+                        if enabled {
+                            SyncEngine.shared.startAutoSync()
+                        } else {
+                            SyncEngine.shared.stopAutoSync()
+                        }
+                    }
+                ))
+                .font(Theme.caption)
+                .toggleStyle(.switch)
+                
+                Spacer()
+                
+                if SyncEngine.shared.pendingCount > 0 {
+                    Text("\(SyncEngine.shared.pendingCount) pending")
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.neutral)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Theme.neutralBg)
+                        .cornerRadius(4)
+                }
+                
+                Button(action: {
+                    Task {
+                        await SyncEngine.shared.syncNow()
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("Sync Now")
+                    }
+                    .font(Theme.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Theme.accent)
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(16)

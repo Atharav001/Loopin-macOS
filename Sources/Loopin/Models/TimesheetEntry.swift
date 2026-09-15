@@ -54,6 +54,9 @@ public struct TimesheetEntry: Identifiable, Codable, Equatable, Sendable {
     public var category: String?
     public var subcategory: String?
     public var productivity: String? // "productive" | "neutral" | "wasteful"
+    public var gcalEventId: String?
+    public var deviceId: String
+    public var isSynced: Bool
     public var updatedAt: Date
     
     public init(
@@ -66,6 +69,9 @@ public struct TimesheetEntry: Identifiable, Codable, Equatable, Sendable {
         category: String? = nil,
         subcategory: String? = nil,
         productivity: String? = nil,
+        gcalEventId: String? = nil,
+        deviceId: String = "macOS",
+        isSynced: Bool = false,
         updatedAt: Date = Date()
     ) {
         self.id = id
@@ -77,6 +83,9 @@ public struct TimesheetEntry: Identifiable, Codable, Equatable, Sendable {
         self.category = category
         self.subcategory = subcategory
         self.productivity = productivity
+        self.gcalEventId = gcalEventId
+        self.deviceId = deviceId
+        self.isSynced = isSynced
         self.updatedAt = updatedAt
     }
     
