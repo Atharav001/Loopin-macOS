@@ -1,0 +1,65 @@
+import SwiftUI
+import AppKit
+
+// MARK: - MenuBarManager
+@MainActor
+public final class MenuBarManager: NSObject, @unchecked Sendable {
+    public static let shared = MenuBarManager()
+    
+    private var statusItem: NSStatusItem?
+    
+    public func setupMenuBar() {
+        guard statusItem == nil else { return }
+        
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        
+        if let button = statusItem?.button {
+            button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Loopin")
+            button.imagePosition = .imageLeading
+            button.title = " Loopin"
+        }
+        
+        let menu = NSMenu()
+        
+        let logItem = NSMenuItem(title: "Log Activity Now...", action: #selector(triggerLogPrompt), keyEquivalent: "l")
+        logItem.target = self
+        menu.addItem(logItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        let openItem = NSMenuItem(title: "Show Loopin Window", action: #selector(showMainWindow), keyEquivalent: "o")
+        openItem.target = self
+        menu.addItem(openItem)
+        
+        let pomodoroItem = NSMenuItem(title: "Toggle Pomodoro Focus", action: #selector(togglePomodoro), keyEquivalent: "p")
+        pomodoroItem.target = self
+        menu.addItem(pomodoroItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        let quitItem = NSMenuItem(title: "Quit Loopin", action: #selector(quitApp), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        
+        statusItem?.menu = menu
+    }
+    
+    @objc private func triggerLogPrompt() {
+        AppState.shared.showFloatingLoggingPanel = true
+    }
+    
+    @objc private func showMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = NSApp.windows.first(where: { $0.title == "Loopin" }) {
+            window.makeKeyAndOrderFront(nil)
+        }
+    }
+    
+    @objc private func togglePomodoro() {
+        AppState.shared.isPomodoroRunning.toggle()
+    }
+    
+    @objc private func quitApp() {
+        NSApp.terminate(nil)
+    }
+}
