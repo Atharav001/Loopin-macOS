@@ -34,6 +34,9 @@ public struct FocusSettingsView: View {
                 // Cloud & Multi-Device Sync Section
                 cloudSyncCard
                 
+                // Google Calendar 2-Way Sync Section
+                googleCalendarCard
+                
                 // Sound & Feedback Section
                 soundOptionsCard
                 
@@ -300,6 +303,172 @@ public struct FocusSettingsView: View {
                     .cornerRadius(6)
                 }
                 .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 14)
+    }
+    
+    // MARK: - Google Calendar 2-Way Sync Card
+    private var googleCalendarCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.clock")
+                        .foregroundColor(Theme.productive)
+                    Text("Google Calendar 2-Way Sync")
+                        .font(Theme.titleSmall)
+                        .foregroundColor(Theme.textPrimary)
+                }
+                
+                Spacer()
+                
+                let isConnected = GoogleCalendarConfig.shared.isConnected
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(isConnected ? Theme.productive : Color.gray)
+                        .frame(width: 7, height: 7)
+                    Text(isConnected ? "Connected to Google" : "Local / Offline")
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.textSecondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Theme.bgDark)
+                .cornerRadius(6)
+            }
+            
+            Text("Syncs your planned and logged timesheets with two dedicated Google Calendars ('Loopin Planned' and 'Loopin Logged'). Your mobile Google Calendar widgets will automatically display everything you track!")
+                .font(Theme.caption)
+                .foregroundColor(Theme.textSecondary)
+            
+            // Dedicated Calendars Preview Pills
+            HStack(spacing: 12) {
+                HStack(spacing: 6) {
+                    Circle().fill(Theme.planned).frame(width: 8, height: 8)
+                    Text("Loopin Planned")
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.textPrimary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Theme.plannedBg)
+                .cornerRadius(6)
+                
+                HStack(spacing: 6) {
+                    Circle().fill(Theme.productive).frame(width: 8, height: 8)
+                    Text("Loopin Logged")
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.textPrimary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Theme.productiveBg)
+                .cornerRadius(6)
+                
+                Spacer()
+            }
+            
+            // Credentials & Actions
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    Text("Client ID:")
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.textSecondary)
+                        .frame(width: 80, alignment: .leading)
+                    
+                    TextField("Google OAuth Client ID", text: Binding(
+                        get: { GoogleCalendarConfig.shared.clientId },
+                        set: { GoogleCalendarConfig.shared.clientId = $0 }
+                    ))
+                    .textFieldStyle(.plain)
+                    .font(Theme.body)
+                    .padding(6)
+                    .background(Theme.bgDark)
+                    .cornerRadius(6)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
+                }
+                
+                HStack(spacing: 10) {
+                    Text("Client Secret:")
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.textSecondary)
+                        .frame(width: 80, alignment: .leading)
+                    
+                    SecureField("Google OAuth Client Secret", text: Binding(
+                        get: { GoogleCalendarConfig.shared.clientSecret },
+                        set: { GoogleCalendarConfig.shared.clientSecret = $0 }
+                    ))
+                    .textFieldStyle(.plain)
+                    .font(Theme.body)
+                    .padding(6)
+                    .background(Theme.bgDark)
+                    .cornerRadius(6)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
+                }
+            }
+            
+            HStack(spacing: 12) {
+                if GoogleCalendarConfig.shared.isConnected {
+                    Button(action: {
+                        GoogleCalendarConfig.shared.disconnect()
+                    }) {
+                        Text("Disconnect")
+                            .font(Theme.caption)
+                            .foregroundColor(Theme.wasteful)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Theme.wastefulBg)
+                            .cornerRadius(6)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button(action: {
+                        // Simulated connection for testing
+                        GoogleCalendarConfig.shared.accessToken = "mock_gcal_token_\(UUID().uuidString.prefix(8))"
+                        GoogleCalendarConfig.shared.plannedCalendarId = "loopin_planned_cal_id"
+                        GoogleCalendarConfig.shared.loggedCalendarId = "loopin_logged_cal_id"
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "link")
+                            Text("Connect Google Calendar")
+                        }
+                        .font(Theme.caption)
+                        .foregroundColor(Theme.accentLight)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Theme.accent.opacity(0.15))
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(.plain)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    Task {
+                        await GoogleCalendarService.shared.syncAll()
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Sync Calendars")
+                    }
+                    .font(Theme.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Theme.productive)
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            if !GoogleCalendarService.shared.statusMessage.isEmpty {
+                Text(GoogleCalendarService.shared.statusMessage)
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary)
             }
         }
         .padding(16)
