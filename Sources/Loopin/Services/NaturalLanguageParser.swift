@@ -51,7 +51,7 @@ public struct NaturalLanguageParser: Sendable {
             let (startHour, startMin) = parseTimeComponents(str: startStr, inheritPM: !startHasMeridiem && isEndPM, inheritAM: !startHasMeridiem && isEndAM)
             let (endHour, endMin) = parseTimeComponents(str: endStr, inheritPM: false, inheritAM: false)
             
-            var startDate = cal.date(bySettingHour: startHour, minute: startMin, second: 0, of: startOfDay) ?? baseDate
+            let startDate = cal.date(bySettingHour: startHour, minute: startMin, second: 0, of: startOfDay) ?? baseDate
             var endDate = cal.date(bySettingHour: endHour, minute: endMin, second: 0, of: startOfDay) ?? baseDate.addingTimeInterval(3600)
             
             if endDate <= startDate {
