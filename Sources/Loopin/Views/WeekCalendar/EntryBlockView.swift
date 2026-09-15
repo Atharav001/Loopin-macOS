@@ -163,7 +163,7 @@ public struct EntryBlockView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: computedHeight)
-        .shadow(color: isHovered ? blockColor.opacity(0.4) : Color.clear, radius: 4)
+        .shadow(color: isHovered ? blockColor.opacity(0.4) : (AppState.shared.currentTheme.isDark ? Color.clear : Color.black.opacity(0.06)), radius: isHovered ? 4 : 2, y: 1)
         .onHover { hovering in
             isHovered = hovering
             if !hovering {

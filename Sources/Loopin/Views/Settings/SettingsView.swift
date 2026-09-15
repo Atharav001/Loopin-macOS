@@ -72,6 +72,23 @@ public struct SettingsView: View {
     
     private func themeCard(_ theme: AppTheme) -> some View {
         let isSelected = appState.currentTheme == theme
+        let isDark = appState.currentTheme.isDark
+        
+        let cardBg: Color = {
+            if isSelected {
+                return Theme.accent.opacity(isDark ? 0.22 : 0.08)
+            } else {
+                return isDark ? Color(red: 24/255, green: 32/255, blue: 47/255) : Color(red: 246/255, green: 248/255, blue: 250/255)
+            }
+        }()
+        
+        let cardBorder: Color = {
+            if isSelected {
+                return Theme.accent
+            } else {
+                return isDark ? Theme.border : Color.black.opacity(0.08)
+            }
+        }()
         
         return Button(action: {
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -103,7 +120,7 @@ public struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(theme.rawValue)
                         .font(.system(size: 12, weight: isSelected ? .bold : .semibold))
-                        .foregroundColor(isSelected ? Theme.accentLight : Theme.textPrimary)
+                        .foregroundColor(isSelected ? (isDark ? Theme.accentLight : Theme.accent) : Theme.textPrimary)
                     
                     Text(theme.description)
                         .font(.system(size: 10))
@@ -114,11 +131,11 @@ public struct SettingsView: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .background(Theme.bgDark)
+            .background(cardBg)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Theme.accent : Theme.border, lineWidth: isSelected ? 2 : 1)
+                    .stroke(cardBorder, lineWidth: isSelected ? 1.5 : 1)
             )
         }
         .buttonStyle(.plain)
@@ -473,7 +490,7 @@ public struct SettingsView: View {
         let entries = DatabaseManager.shared.fetchForDay(Date())
         var csv = "ID,Kind,Start,End,DurationMinutes,Title,Category,Productivity\n"
         for e in entries {
-            csv += "\(e.id),\(e.kind),\(e.startAt),\(e.endAt),\(e.durationMinutes),\"\(e.rawText)\",\"\(e.category ?? "")\",\(e.productivity)\n"
+            csv += "\(e.id),\(e.kind),\(e.startAt),\(e.endAt),\(e.durationMinutes),\"\(e.rawText)\",\"\(e.category ?? "")\",\(e.productivity ?? "")\n"
         }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(csv, forType: .string)

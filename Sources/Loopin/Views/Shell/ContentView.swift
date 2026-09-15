@@ -54,6 +54,8 @@ public struct ContentView: View {
             }
         }
         .frame(minWidth: 980, minHeight: 640)
+        .id(appState.currentTheme)
+        .preferredColorScheme(appState.currentTheme.isDark ? .dark : .light)
         .ambientCelebrationGlow(isTriggered: $appState.triggerCelebrationGlow, glowColor: appState.celebrationColor)
         .sheet(isPresented: $appState.showEntryEditor) {
             EntryEditorPopover(

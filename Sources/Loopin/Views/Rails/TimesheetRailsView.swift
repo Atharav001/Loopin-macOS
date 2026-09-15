@@ -89,7 +89,7 @@ public struct TimesheetRailsView: View {
                             // Rail 1: PLANNED
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(Theme.bgDark.opacity(0.6))
+                                    .fill(AppState.shared.currentTheme.isDark ? Theme.bgDark.opacity(0.6) : Color.black.opacity(0.035))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 8)
                                             .stroke(Theme.border, lineWidth: 1)
@@ -112,7 +112,7 @@ public struct TimesheetRailsView: View {
                             // Rail 2: LOGGED
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(Theme.bgDark.opacity(0.6))
+                                    .fill(AppState.shared.currentTheme.isDark ? Theme.bgDark.opacity(0.6) : Color.black.opacity(0.035))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 8)
                                             .stroke(Theme.border, lineWidth: 1)

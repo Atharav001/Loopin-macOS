@@ -44,6 +44,9 @@ public final class LoggingPanelController: ObservableObject, @unchecked Sendable
         
         guard let panel = panel else { return }
         
+        let isDark = AppState.shared.currentTheme.isDark
+        panel.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
+        
         // Position panel at top right of main screen
         if let screen = NSScreen.main {
             let screenRect = screen.visibleFrame

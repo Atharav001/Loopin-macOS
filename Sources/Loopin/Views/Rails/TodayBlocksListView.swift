@@ -204,7 +204,7 @@ public struct TodayBlocksListView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(isHovered ? Theme.bgCardHover : Theme.bgDark.opacity(0.5))
+        .background(isHovered ? Theme.bgCardHover : (AppState.shared.currentTheme.isDark ? Theme.bgDark.opacity(0.5) : Color(red: 247/255, green: 248/255, blue: 250/255)))
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)

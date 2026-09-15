@@ -53,6 +53,10 @@ public struct WindowAccessor: NSViewRepresentable {
         
         // Enable zooming/resizing and standard traffic lights
         window.styleMask.insert([.titled, .closable, .miniaturizable, .resizable])
+        
+        // Dynamically match native macOS window chrome & traffic lights to theme
+        let isDark = AppState.shared.currentTheme.isDark
+        window.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
     }
 }
 

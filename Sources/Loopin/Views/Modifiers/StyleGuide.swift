@@ -233,20 +233,22 @@ public enum Theme {
 
 // MARK: - Visual Modifiers
 public struct GlassCardModifier: ViewModifier {
+    @ObservedObject var appState: AppState = .shared
     var cornerRadius: CGFloat = 12
     var strokeColor: Color? = nil
     
     public func body(content: Content) -> some View {
+        let isDark = appState.currentTheme.isDark
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(Theme.bgCard)
+                    .fill(isDark ? Theme.bgCard : Color.white)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(strokeColor ?? Theme.border, lineWidth: 1)
+                    .stroke(strokeColor ?? (isDark ? Theme.border : Color.black.opacity(0.08)), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(AppState.shared.currentTheme.isDark ? 0.25 : 0.06), radius: 6, x: 0, y: 2)
+            .shadow(color: Color.black.opacity(isDark ? 0.25 : 0.05), radius: isDark ? 6 : 8, x: 0, y: isDark ? 2 : 2)
     }
 }
 
