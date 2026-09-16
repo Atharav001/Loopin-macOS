@@ -46,9 +46,13 @@ public struct WeekCalendarView: View {
                 // Vertical Scrollable Grid
                 ScrollView(.vertical, showsIndicators: true) {
                     HStack(alignment: .top, spacing: 0) {
-                        // Time Gutter (00:00 - 23:00 or 12 AM - 11 PM)
-                        TimeGutterView(hourHeight: hourHeight, use24HourClock: appState.use24HourClock)
-                            .frame(width: gutterWidth)
+                        // Time Gutter (00:00 - 23:00 or awake hours)
+                        TimeGutterView(
+                            hourHeight: hourHeight,
+                            use24HourClock: appState.use24HourClock,
+                            hours: appState.visibleTimesheetHours
+                        )
+                        .frame(width: gutterWidth)
                         
                         // 7 Day Columns
                         HStack(spacing: 0) {
@@ -63,6 +67,7 @@ public struct WeekCalendarView: View {
                                     columnWidth: colWidth,
                                     isToday: isToday,
                                     use24HourClock: appState.use24HourClock,
+                                    hours: appState.visibleTimesheetHours,
                                     onSelectEntry: { entry in
                                         selectedEntryForEdit = entry
                                         isShowingEditor = true
@@ -207,6 +212,31 @@ public struct WeekCalendarView: View {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(Theme.border, lineWidth: 1)
             )
+            
+            // Sleep Hours Visibility Toggle Button
+            Button(action: {
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                    appState.hideSleepHoursOnTimesheet.toggle()
+                }
+            }) {
+                HStack(spacing: 5) {
+                    Image(systemName: appState.hideSleepHoursOnTimesheet ? "moon.zzz.fill" : "moon.zzz")
+                        .font(.system(size: 10, weight: .bold))
+                    Text(appState.hideSleepHoursOnTimesheet ? "Sleep Hidden" : "All 24h")
+                        .font(.system(size: 10.5, weight: .semibold))
+                }
+                .foregroundColor(appState.hideSleepHoursOnTimesheet ? Theme.accentLight : Theme.textMuted)
+                .padding(.horizontal, 9)
+                .frame(height: 26)
+                .background(appState.hideSleepHoursOnTimesheet ? Theme.accent.opacity(0.18) : Theme.bgCard)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(appState.hideSleepHoursOnTimesheet ? Theme.accent.opacity(0.4) : Theme.border, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .help(appState.hideSleepHoursOnTimesheet ? "Sleep hours hidden from timesheet. Click to show all 24 hours." : "Showing all 24 hours. Click to hide sleep/quiet hours.")
             
             // Total Weekly Hours Badge
             HStack(spacing: 5) {

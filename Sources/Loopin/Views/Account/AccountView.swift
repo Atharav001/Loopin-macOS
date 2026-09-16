@@ -16,29 +16,50 @@ public struct AccountView: View {
     @State private var verificationError: String?
     @State private var copyTokenFeedback: Bool = false
     
+    // Tocklog Features & History State
+    @State private var allEntries: [TimesheetEntry] = []
+    @State private var showHistorySheet: Bool = false
+    @State private var streakCopyFeedback: Bool = false
+    @State private var hoveredCellInfo: String? = nil
+    
     public init() {}
     
     public var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 22) {
-                // Header
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(Theme.accent)
-                        Text("Account & Cloud Workspace")
-                            .font(Theme.titleLarge)
-                            .foregroundColor(Theme.textPrimary)
+                // Tocklog Profile Hero Header & 3-KPI Cards
+                tocklogHeroProfileSection
+                
+                // Tocklog 12-Week Activity Heatmap Grid
+                tocklogActivity12WeeksCard
+                
+                // Tocklog Share Progress & Upgrade Cards
+                HStack(spacing: 16) {
+                    tocklogShareProgressCard
+                    tocklogUpgradePlanCard
+                }
+                
+                // Tocklog Account Navigation (Settings, History)
+                tocklogAccountNavCard
+                
+                Divider()
+                    .padding(.vertical, 4)
+                
+                // Cloud Workspace & Google Sync Section Header
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "cloud.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Theme.accentLight)
+                        Text("CLOUD WORKSPACE & SYNC")
+                            .font(.system(size: 11, weight: .bold))
+                            .tracking(1.0)
+                            .foregroundColor(Theme.textMuted)
                     }
-                    Text("Manage your Google Account, 2-way Google Calendar synchronization, and mobile device pairing.")
-                        .font(Theme.body)
+                    Text("2-way Google Calendar synchronization and cross-device mobile pairing.")
+                        .font(.system(size: 11.5))
                         .foregroundColor(Theme.textSecondary)
                 }
-                .padding(.bottom, 4)
-                
-                // 1. User Profile & Real Google Connection Card
-                userProfileCard
                 
                 // 2. Google Calendar 2-Way Sync Engine Card (with "i" Setup Guide button)
                 googleCalendarCard
@@ -51,6 +72,15 @@ public struct AccountView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Theme.bgDeep)
+        .onAppear {
+            loadAllEntries()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: DatabaseManager.didChangeNotification)) { _ in
+            loadAllEntries()
+        }
+        .sheet(isPresented: $showHistorySheet) {
+            HistorySheetView(onClose: { showHistorySheet = false })
+        }
         .sheet(isPresented: $showGoogleAuthSheet) {
             googleAuthSheetView
         }
@@ -59,111 +89,381 @@ public struct AccountView: View {
         }
     }
     
-    // MARK: - 1. User Profile Card
-    private var userProfileCard: some View {
-        HStack(spacing: 18) {
-            // Avatar with initials
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Theme.accent, Theme.accentLight],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 56, height: 56)
-                    .shadow(color: Theme.accent.opacity(0.35), radius: 6, y: 2)
-                
-                Text(initials(for: appState.googleUserName))
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-            }
+    // MARK: - 1. Tocklog Mobile Profile & Activity Suite
+    private var totalSessionsCount: Int {
+        allEntries.filter { $0.kind == EntryKind.logged.rawValue }.count
+    }
+    
+    private var totalFocusHoursCount: Double {
+        let mins = allEntries.filter { $0.kind == EntryKind.logged.rawValue && $0.productivity == "productive" }.reduce(0) { $0 + $1.durationMinutes }
+        return Double(mins) / 60.0
+    }
+    
+    private var currentStreakCount: Int {
+        computeStreak(entries: allEntries)
+    }
+    
+    private var tocklogHeroProfileSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            Text("PROFILE")
+                .font(.system(size: 11, weight: .bold))
+                .tracking(2.0)
+                .foregroundColor(Theme.textMuted)
             
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
+            // User identity row
+            HStack(spacing: 16) {
+                // Large Avatar Circle with initial
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
+                        .background(Circle().fill(Color.black.opacity(0.5)))
+                        .frame(width: 58, height: 58)
+                    
+                    Text(String(appState.googleUserName.prefix(1)).uppercased())
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
                     Text(appState.googleUserName)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .tracking(1.0)
                         .foregroundColor(Theme.textPrimary)
                     
-                    Text("PRO MEMBER")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    Text(appState.googleUserEmail)
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.textMuted)
+                    
+                    Text("FREE")
+                        .font(.system(size: 8.5, weight: .bold))
+                        .tracking(1.0)
+                        .foregroundColor(Theme.textSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2.5)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        )
+                }
+                
+                Spacer()
+                
+                // Sign In / Sign Out button
+                if appState.isSignedInWithGoogle {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            authService.disconnect()
+                            syncStatusMessage = "Signed out."
+                        }
+                    }) {
+                        Text("Sign Out")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Theme.textSecondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Theme.bgSubtle)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button(action: {
+                        showGoogleAuthSheet = true
+                    }) {
+                        HStack(spacing: 6) {
+                            googleLogoIcon
+                            Text("Connect Google")
+                                .font(.system(size: 11.5, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6.5)
+                        .background(Color(red: 26/255, green: 115/255, blue: 232/255))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.bottom, 2)
+            
+            // 3 KPI Metrics Row (SESSIONS | FOCUS HRS | STREAK)
+            HStack(spacing: 16) {
+                tocklogMetricPill(value: "\(totalSessionsCount)", label: "SESSIONS")
+                
+                Rectangle()
+                    .fill(Theme.border.opacity(0.5))
+                    .frame(width: 1, height: 32)
+                
+                tocklogMetricPill(value: String(format: "%.1f", totalFocusHoursCount), label: "FOCUS HRS")
+                
+                Rectangle()
+                    .fill(Theme.border.opacity(0.5))
+                    .frame(width: 1, height: 32)
+                
+                HStack(spacing: 4) {
+                    VStack(spacing: 3) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(red: 255/255, green: 87/255, blue: 34/255))
+                            Text(currentStreakCount > 0 ? "\(currentStreakCount)" : "—")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(Theme.textPrimary)
+                        }
+                        
+                        HStack(spacing: 3) {
+                            Text("STREAK")
+                                .font(.system(size: 9, weight: .bold))
+                                .tracking(1.0)
+                                .foregroundColor(Theme.textMuted)
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 8))
+                                .foregroundColor(Theme.textMuted.opacity(0.7))
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(Theme.bgCard)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+        }
+    }
+    
+    private func tocklogMetricPill(value: String, label: String) -> some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundColor(Theme.textPrimary)
+            Text(label)
+                .font(.system(size: 9, weight: .bold))
+                .tracking(1.0)
+                .foregroundColor(Theme.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    // MARK: - 12-Week Activity Heatmap Card
+    private var tocklogActivity12WeeksCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("ACTIVITY")
+                    .font(.system(size: 10.5, weight: .bold))
+                    .tracking(1.5)
+                    .foregroundColor(Theme.textPrimary)
+                Text("12 WEEKS")
+                    .font(.system(size: 10, weight: .semibold))
+                    .tracking(1.0)
+                    .foregroundColor(Theme.textMuted)
+                
+                Spacer()
+                
+                if let info = hoveredCellInfo {
+                    Text(info)
+                        .font(.system(size: 9.5, weight: .medium, design: .monospaced))
                         .foregroundColor(Theme.accentLight)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Theme.accent.opacity(0.16))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .transition(.opacity)
                 }
-                
-                Text(appState.isSignedInWithGoogle ? appState.googleUserEmail : "No Google account connected")
-                    .font(.system(size: 12))
-                    .foregroundColor(Theme.textSecondary)
-                
-                // Real OAuth Status Indicator
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(connectionStatusColor)
-                        .frame(width: 7, height: 7)
-                    Text(connectionStatusText)
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundColor(connectionStatusColor)
+            }
+            
+            // Month labels row
+            HStack(spacing: 0) {
+                Spacer().frame(width: 18) // space for weekday labels
+                let months = computeMonthLabels()
+                HStack {
+                    ForEach(months, id: \.title) { item in
+                        Text(item.title)
+                            .font(.system(size: 9, weight: .bold))
+                            .tracking(1.0)
+                            .foregroundColor(Theme.textMuted)
+                        Spacer()
+                    }
                 }
-                .padding(.top, 2)
+            }
+            
+            // Grid of 7 rows (M, T, W, T, F, S, S) by 12 columns
+            let grid = compute12WeeksGrid(entries: allEntries)
+            let dayNames = ["M", "T", "W", "T", "F", "S", "S"]
+            
+            VStack(spacing: 4) {
+                ForEach(0..<7, id: \.self) { dayIdx in
+                    HStack(spacing: 4) {
+                        Text(dayNames[dayIdx])
+                            .font(.system(size: 8.5, weight: .medium))
+                            .foregroundColor(Theme.textMuted)
+                            .frame(width: 14, alignment: .leading)
+                        
+                        ForEach(0..<12, id: \.self) { weekIdx in
+                            let cell = grid[weekIdx][dayIdx]
+                            heatmapSquare(cell: cell)
+                        }
+                    }
+                }
+            }
+            
+            // Legend
+            HStack(spacing: 4) {
+                Spacer()
+                Text("LESS")
+                    .font(.system(size: 8, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundColor(Theme.textMuted)
+                
+                heatmapLegendSquare(level: 0)
+                heatmapLegendSquare(level: 1)
+                heatmapLegendSquare(level: 2)
+                heatmapLegendSquare(level: 3)
+                heatmapLegendSquare(level: 4)
+                
+                Text("MORE")
+                    .font(.system(size: 8, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundColor(Theme.textMuted)
+            }
+            .padding(.top, 4)
+        }
+        .padding(18)
+        .background(Theme.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+    }
+    
+    // MARK: - Share Progress & Upgrade Plan Cards
+    private var tocklogShareProgressCard: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("SHARE YOUR PROGRESS")
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(1.0)
+                    .foregroundColor(Theme.textPrimary)
+                Text(streakCopyFeedback ? "Copied streak to clipboard!" : "Post your streak to social media.")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(streakCopyFeedback ? Theme.productive : Theme.textMuted)
             }
             
             Spacer()
             
-            // Sign In / Sign Out Button
-            if appState.isSignedInWithGoogle {
+            Button(action: {
+                copyStreakToClipboard()
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(red: 255/255, green: 87/255, blue: 34/255))
+                    Text(currentStreakCount > 0 ? "\(currentStreakCount)d" : "—")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.white.opacity(0.08))
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(Theme.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
+    }
+    
+    private var tocklogUpgradePlanCard: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("UPGRADE YOUR PLAN")
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(1.0)
+                    .foregroundColor(Theme.textPrimary)
+                Text("Unlock AI analysis, cloud sync and advanced history.")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Theme.textMuted)
+            }
+            
+            Spacer()
+            
+            Image(systemName: "arrow.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Theme.textMuted)
+        }
+        .padding(16)
+        .background(Theme.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
+    }
+    
+    // MARK: - Account Navigation Card
+    private var tocklogAccountNavCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ACCOUNT")
+                .font(.system(size: 9.5, weight: .bold))
+                .tracking(1.5)
+                .foregroundColor(Theme.textMuted)
+                .padding(.horizontal, 4)
+            
+            VStack(spacing: 1) {
                 Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        authService.disconnect()
-                        syncStatusMessage = "Signed out of Google account."
-                    }
+                    appState.selectedTab = .settings
                 }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("Sign Out")
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("SETTINGS")
+                                .font(.system(size: 12, weight: .bold))
+                                .tracking(0.8)
+                                .foregroundColor(Theme.textPrimary)
+                            Text("Notifications, interval, work hours")
+                                .font(.system(size: 10.5))
+                                .foregroundColor(Theme.textMuted)
+                        }
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textMuted)
                     }
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Theme.textSecondary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Theme.bgSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Theme.border, lineWidth: 1)
-                    )
+                    .padding(14)
+                    .background(Theme.bgCard)
                 }
                 .buttonStyle(.plain)
-            } else {
+                
+                Divider()
+                    .background(Theme.border)
+                
                 Button(action: {
-                    showGoogleAuthSheet = true
+                    showHistorySheet = true
                 }) {
-                    HStack(spacing: 8) {
-                        googleLogoIcon
-                        Text("Sign in with Google")
-                            .font(.system(size: 12.5, weight: .semibold))
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("HISTORY")
+                                .font(.system(size: 12, weight: .bold))
+                                .tracking(0.8)
+                                .foregroundColor(Theme.textPrimary)
+                            Text("Browse past sessions")
+                                .font(.system(size: 10.5))
+                                .foregroundColor(Theme.textMuted)
+                        }
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.textMuted)
                     }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 9)
-                    .background(
-                        LinearGradient(
-                            colors: [Color(red: 26/255, green: 115/255, blue: 232/255), Color(red: 24/255, green: 90/255, blue: 188/255)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .shadow(color: Color(red: 26/255, green: 115/255, blue: 232/255).opacity(0.35), radius: 5, y: 2)
+                    .padding(14)
+                    .background(Theme.bgCard)
                 }
                 .buttonStyle(.plain)
             }
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
         }
-        .padding(20)
-        .glassCard(cornerRadius: 14)
     }
     
     private var connectionStatusColor: Color {
@@ -615,6 +915,191 @@ public struct AccountView: View {
             isSyncingNow = false
             appState.lastGoogleSyncDate = Date()
             syncStatusMessage = gcalService.statusMessage
+        }
+    }
+    
+    // MARK: - Activity Heatmap & Metrics Computation
+    private func loadAllEntries() {
+        allEntries = DatabaseManager.shared.fetchAllEntries()
+    }
+    
+    private func computeStreak(entries: [TimesheetEntry]) -> Int {
+        let logged = entries.filter { $0.kind == EntryKind.logged.rawValue && $0.productivity == "productive" }
+        let calendar = Calendar.current
+        var activeDates = Set<String>()
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        for e in logged {
+            activeDates.insert(fmt.string(from: e.startAt))
+        }
+        
+        var streak = 0
+        var checkDate = Date()
+        let todayStr = fmt.string(from: checkDate)
+        
+        if !activeDates.contains(todayStr) {
+            if let yesterday = calendar.date(byAdding: .day, value: -1, to: checkDate) {
+                let yestStr = fmt.string(from: yesterday)
+                if activeDates.contains(yestStr) {
+                    checkDate = yesterday
+                } else {
+                    return 0
+                }
+            } else {
+                return 0
+            }
+        }
+        
+        while true {
+            let str = fmt.string(from: checkDate)
+            if activeDates.contains(str) {
+                streak += 1
+                guard let prev = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }
+                checkDate = prev
+            } else {
+                break
+            }
+        }
+        return streak
+    }
+    
+    private struct HeatmapDayCell: Identifiable {
+        let id = UUID()
+        let date: Date
+        let dateString: String
+        let minutes: Int
+        let count: Int
+        let level: Int
+        let isToday: Bool
+    }
+    
+    private func compute12WeeksGrid(entries: [TimesheetEntry]) -> [[HeatmapDayCell]] {
+        let calendar = Calendar.current
+        let today = Date()
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        
+        var currentWeekMonday = today
+        let weekday = calendar.component(.weekday, from: today)
+        let daysFromMonday = (weekday == 1) ? 6 : (weekday - 2)
+        if let mon = calendar.date(byAdding: .day, value: -daysFromMonday, to: calendar.startOfDay(for: today)) {
+            currentWeekMonday = mon
+        }
+        
+        let startMonday = calendar.date(byAdding: .weekOfYear, value: -11, to: currentWeekMonday) ?? currentWeekMonday
+        
+        var dailyMinutes: [String: Int] = [:]
+        var dailyCount: [String: Int] = [:]
+        for e in entries where e.kind == EntryKind.logged.rawValue && e.productivity == "productive" {
+            let key = fmt.string(from: e.startAt)
+            dailyMinutes[key, default: 0] += e.durationMinutes
+            dailyCount[key, default: 0] += 1
+        }
+        
+        var columns: [[HeatmapDayCell]] = []
+        for week in 0..<12 {
+            var weekDays: [HeatmapDayCell] = []
+            for day in 0..<7 {
+                let dayOffset = week * 7 + day
+                let date = calendar.date(byAdding: .day, value: dayOffset, to: startMonday) ?? startMonday
+                let dateStr = fmt.string(from: date)
+                let mins = dailyMinutes[dateStr] ?? 0
+                let count = dailyCount[dateStr] ?? 0
+                
+                let level: Int
+                if mins == 0 {
+                    level = 0
+                } else if mins < 60 {
+                    level = 1
+                } else if mins < 180 {
+                    level = 2
+                } else if mins < 300 {
+                    level = 3
+                } else {
+                    level = 4
+                }
+                
+                let isToday = calendar.isDateInToday(date)
+                weekDays.append(HeatmapDayCell(date: date, dateString: dateStr, minutes: mins, count: count, level: level, isToday: isToday))
+            }
+            columns.append(weekDays)
+        }
+        return columns
+    }
+    
+    private func computeMonthLabels() -> [(title: String, offset: CGFloat)] {
+        let calendar = Calendar.current
+        let today = Date()
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMM"
+        
+        let m1 = calendar.date(byAdding: .month, value: -2, to: today) ?? today
+        let m2 = calendar.date(byAdding: .month, value: -1, to: today) ?? today
+        let m3 = today
+        
+        return [
+            (title: fmt.string(from: m1).uppercased(), offset: 0),
+            (title: fmt.string(from: m2).uppercased(), offset: 0),
+            (title: fmt.string(from: m3).uppercased(), offset: 0)
+        ]
+    }
+    
+    private func heatmapSquare(cell: HeatmapDayCell) -> some View {
+        let color: Color = {
+            switch cell.level {
+            case 1: return Theme.productive.opacity(0.35)
+            case 2: return Theme.productive.opacity(0.60)
+            case 3: return Theme.productive.opacity(0.85)
+            case 4: return Color(red: 255/255, green: 87/255, blue: 34/255)
+            default: return Color.white.opacity(0.06)
+            }
+        }()
+        
+        return RoundedRectangle(cornerRadius: 2.5)
+            .fill(color)
+            .frame(width: 14, height: 14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 2.5)
+                    .stroke(cell.isToday ? Color.white : Color.white.opacity(0.1), lineWidth: cell.isToday ? 1.5 : 0.6)
+            )
+            .onHover { isHovered in
+                if isHovered {
+                    hoveredCellInfo = "\(cell.dateString): \(cell.minutes)m focus (\(cell.count) sessions)"
+                } else {
+                    if hoveredCellInfo?.contains(cell.dateString) == true {
+                        hoveredCellInfo = nil
+                    }
+                }
+            }
+    }
+    
+    private func heatmapLegendSquare(level: Int) -> some View {
+        let color: Color = {
+            switch level {
+            case 1: return Theme.productive.opacity(0.35)
+            case 2: return Theme.productive.opacity(0.60)
+            case 3: return Theme.productive.opacity(0.85)
+            case 4: return Color(red: 255/255, green: 87/255, blue: 34/255)
+            default: return Color.white.opacity(0.06)
+            }
+        }()
+        
+        return RoundedRectangle(cornerRadius: 2)
+            .fill(color)
+            .frame(width: 10, height: 10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 2)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+            )
+    }
+    
+    private func copyStreakToClipboard() {
+        let text = "🔥 Loopin Streak: \(currentStreakCount) days! Tracked \(totalSessionsCount) sessions & \(String(format: "%.1f", totalFocusHoursCount)) hrs of deep focus. #Loopin #DeepWork"
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        streakCopyFeedback = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            streakCopyFeedback = false
         }
     }
 }

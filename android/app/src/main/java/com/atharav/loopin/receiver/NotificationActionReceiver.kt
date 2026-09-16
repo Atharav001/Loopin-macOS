@@ -35,9 +35,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
                             endAt = now,
                             rawText = replyText,
                             inputMethod = "typed",
-                            category = match?.category ?: "Deep Work",
+                            category = match?.category ?: "Personal / Uncategorized",
                             subcategory = match?.subcategory,
-                            productivity = match?.productivity ?: "productive",
+                            productivity = match?.productivity ?: "wasteful",
                             deviceId = "android",
                             isSynced = false
                         )
@@ -47,20 +47,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             }
 
             HourlyLoggingService.ACTION_SKIP -> {
-                CoroutineScope(Dispatchers.IO).launch {
-                    val entry = TimesheetEntry(
-                        kind = "logged",
-                        startAt = oneHourAgo,
-                        endAt = now,
-                        rawText = "Skipped interval",
-                        inputMethod = "skipped",
-                        category = "Rest",
-                        productivity = "neutral",
-                        deviceId = "android",
-                        isSynced = false
-                    )
-                    db.timesheetDao().insertEntry(entry)
-                }
+                // When interval is skipped, do not log anything into the database
             }
         }
     }

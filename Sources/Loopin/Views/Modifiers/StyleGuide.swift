@@ -8,7 +8,7 @@ public enum AppTheme: String, CaseIterable, Identifiable, Codable, Sendable {
     case tickTickLight = "TickTick Light"
     case systemDark = "Normal Dark (Google/Microsoft)"
     case standardLight = "Standard Light"
-    case tocklogDark = "Tocklog Dark (Mobile Modern)"
+    case tocklogDark = "Tocklog Dark"
     
     public var id: String { rawValue }
     
@@ -41,7 +41,7 @@ public enum AppTheme: String, CaseIterable, Identifiable, Codable, Sendable {
         case .tickTickLight: return "Clean modern white with TickTick blue buttons and badges"
         case .systemDark: return "Google & Microsoft neutral dark material surfaces"
         case .standardLight: return "Pure white Apple & Google minimal light aesthetic"
-        case .tocklogDark: return "Mobile modern obsidian dark with signature warm amber & gold accents"
+        case .tocklogDark: return "Tocklog Dark — Pure obsidian OLED black, high-contrast active pills, flame streaks and sleek card borders"
         }
     }
 }
@@ -62,7 +62,7 @@ public enum Theme {
         case .tickTickLight: return Color(red: 246/255, green: 247/255, blue: 249/255)   // #F6F7F9
         case .systemDark: return Color(red: 18/255, green: 18/255, blue: 18/255)         // #121212
         case .standardLight: return Color(red: 255/255, green: 255/255, blue: 255/255)   // #FFFFFF
-        case .tocklogDark: return Color(red: 20/255, green: 23/255, blue: 26/255)         // #14171A (Obsidian)
+        case .tocklogDark: return Color(red: 7/255, green: 8/255, blue: 10/255)           // #07080A (Pitch Obsidian)
         }
     }
     
@@ -75,7 +75,7 @@ public enum Theme {
         case .tickTickLight: return Color(red: 255/255, green: 255/255, blue: 255/255)   // #FFFFFF
         case .systemDark: return Color(red: 30/255, green: 30/255, blue: 30/255)         // #1E1E1E
         case .standardLight: return Color(red: 248/255, green: 249/255, blue: 250/255)   // #F8F9FA
-        case .tocklogDark: return Color(red: 26/255, green: 29/255, blue: 33/255)         // #1A1D21
+        case .tocklogDark: return Color(red: 14/255, green: 16/255, blue: 20/255)         // #0E1014
         }
     }
     
@@ -88,7 +88,7 @@ public enum Theme {
         case .tickTickLight: return Color(red: 255/255, green: 255/255, blue: 255/255)   // #FFFFFF
         case .systemDark: return Color(red: 37/255, green: 37/255, blue: 37/255)         // #252525
         case .standardLight: return Color(red: 255/255, green: 255/255, blue: 255/255)   // #FFFFFF
-        case .tocklogDark: return Color(red: 34/255, green: 38/255, blue: 43/255)         // #22262B
+        case .tocklogDark: return Color(red: 19/255, green: 22/255, blue: 26/255)         // #13161A
         }
     }
     
@@ -101,7 +101,7 @@ public enum Theme {
         case .tickTickLight: return Color(red: 237/255, green: 240/255, blue: 245/255)
         case .systemDark: return Color(red: 45/255, green: 45/255, blue: 45/255)
         case .standardLight: return Color(red: 241/255, green: 243/255, blue: 244/255)
-        case .tocklogDark: return Color(red: 44/255, green: 49/255, blue: 55/255)         // #2C3137
+        case .tocklogDark: return Color(red: 26/255, green: 30/255, blue: 36/255)         // #1A1E24
         }
     }
     
@@ -124,7 +124,7 @@ public enum Theme {
         case .systemDark, .standardLight:
             return Color(red: 26/255, green: 115/255, blue: 232/255)     // #1A73E8
         case .tocklogDark:
-            return Color(red: 245/255, green: 158/255, blue: 11/255)     // #F59E0B (Signature Amber)
+            return Color(red: 255/255, green: 87/255, blue: 34/255)      // #FF5722 (Signature Flame)
         }
     }
     
@@ -136,7 +136,7 @@ public enum Theme {
         case .tickTickLight: return Color(red: 59/255, green: 104/255, blue: 255/255)
         case .systemDark: return Color(red: 138/255, green: 180/255, blue: 248/255)
         case .standardLight: return Color(red: 26/255, green: 115/255, blue: 232/255)
-        case .tocklogDark: return Color(red: 251/255, green: 191/255, blue: 36/255)      // #FBBF24 (Gold)
+        case .tocklogDark: return Color(red: 255/255, green: 120/255, blue: 74/255)      // #FF784A
         }
     }
     

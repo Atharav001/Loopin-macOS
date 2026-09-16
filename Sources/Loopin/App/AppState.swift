@@ -92,6 +92,11 @@ public final class AppState: ObservableObject {
         return cal.date(bySettingHour: 7, minute: 0, second: 0, of: Date()) ?? Date()
     }()
     
+    // Timesheet Sleep Hours Visibility Toggle
+    @Published public var hideSleepHoursOnTimesheet: Bool = UserDefaults.standard.bool(forKey: "Logtrackin_HideSleepHoursOnTimesheet") {
+        didSet { UserDefaults.standard.set(hideSleepHoursOnTimesheet, forKey: "Logtrackin_HideSleepHoursOnTimesheet") }
+    }
+    
     // Pomodoro Focus state
     @Published public var pomodoroDurationMinutes: Int = 25
     @Published public var pomodoroBreakMinutes: Int = 5
@@ -106,10 +111,10 @@ public final class AppState: ObservableObject {
     @Published public var isSignedInWithGoogle: Bool = UserDefaults.standard.bool(forKey: "Logtrackin_GoogleSignedIn") {
         didSet { UserDefaults.standard.set(isSignedInWithGoogle, forKey: "Logtrackin_GoogleSignedIn") }
     }
-    @Published public var googleUserName: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleUserName") ?? "Atharav Narang" {
+    @Published public var googleUserName: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleUserName") ?? "ATHARAV HARI" {
         didSet { UserDefaults.standard.set(googleUserName, forKey: "Logtrackin_GoogleUserName") }
     }
-    @Published public var googleUserEmail: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleUserEmail") ?? "atharav.narang@gmail.com" {
+    @Published public var googleUserEmail: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleUserEmail") ?? "atharavh82@gmail.com" {
         didSet { UserDefaults.standard.set(googleUserEmail, forKey: "Logtrackin_GoogleUserEmail") }
     }
     @Published public var googleCalendarSyncEnabled: Bool = UserDefaults.standard.object(forKey: "Logtrackin_GoogleSyncEnabled") as? Bool ?? true {
@@ -276,6 +281,30 @@ public final class AppState: ObservableObject {
         let f = DateFormatter()
         f.dateFormat = use24HourClock ? "HH:mm" : "h:mm a"
         return "\(f.string(from: start)) – \(f.string(from: end))"
+    }
+    
+    public var visibleTimesheetHours: [Int] {
+        if !hideSleepHoursOnTimesheet {
+            return Array(0..<24)
+        }
+        let cal = Calendar.current
+        let start = cal.component(.hour, from: quietHoursStart)
+        let end = cal.component(.hour, from: quietHoursEnd)
+        
+        // Typical overnight sleep: e.g. 22:00 to 07:00
+        if start > end {
+            // Sleep is [start...23] and [0..<end]
+            // Awake / visible hours are end..<start (e.g. 7..<22)
+            let hours = Array(end..<start)
+            return hours.isEmpty ? Array(0..<24) : hours
+        } else if start < end {
+            // Sleep is [start..<end]
+            // Awake is [0..<start] + [end..<24]
+            let hours = Array(0..<start) + Array(end..<24)
+            return hours.isEmpty ? Array(0..<24) : hours
+        } else {
+            return Array(0..<24)
+        }
     }
 }
 

@@ -94,6 +94,13 @@ public final class DatabaseManager: @unchecked Sendable {
             _ = self.execute(sql: "UPDATE timesheet_entries SET productivity = 'wasteful' WHERE productivity = 'neutral' OR productivity IS NULL OR productivity = '';")
             _ = self.execute(sql: "UPDATE classification_rules SET productivity = 'wasteful' WHERE productivity = 'neutral';")
             _ = self.execute(sql: "DELETE FROM classification_rules WHERE phrase LIKE '%got bigbasket and trying fixing app%';")
+            
+            // Cleanup: remove any skipped intervals so they do not show on the timesheet
+            _ = self.execute(sql: "DELETE FROM timesheet_entries WHERE input_method = 'skipped' OR LOWER(raw_text) = 'skipped interval' OR LOWER(raw_text) = 'skipped';")
+            
+            // Correct misclassified entries like "Nothing" or slang to wasteful (Non-Productive)
+            _ = self.execute(sql: "UPDATE timesheet_entries SET productivity = 'wasteful', category = 'Rest & Leisure' WHERE LOWER(TRIM(raw_text)) = 'nothing' OR LOWER(raw_text) LIKE 'chutiyap%' OR LOWER(raw_text) LIKE 'bakchodi%' OR LOWER(raw_text) LIKE 'timepass%' OR LOWER(raw_text) LIKE 'chill%';")
+            _ = self.execute(sql: "UPDATE classification_rules SET productivity = 'wasteful', category = 'Rest & Leisure' WHERE LOWER(TRIM(phrase)) = 'nothing' OR LOWER(phrase) LIKE 'chutiyap%' OR LOWER(phrase) LIKE 'bakchodi%' OR LOWER(phrase) LIKE 'timepass%' OR LOWER(phrase) LIKE 'chill%';")
         }
     }
     

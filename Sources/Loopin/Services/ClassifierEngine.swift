@@ -143,6 +143,29 @@ public struct ClassifierEngine: Sendable {
         TaxonomyRule(phrase: "pubg", category: "Gaming", subcategory: "Mobile", productivity: .wasteful),
         TaxonomyRule(phrase: "bgmi", category: "Gaming", subcategory: "Mobile", productivity: .wasteful),
         
+        // MARK: - Non-Productive: Idle, Colloquial & Wasteful Activities
+        TaxonomyRule(phrase: "doing nothing", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "did nothing", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "absolutely nothing", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "nothing", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "not much", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "chutiyap", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "chutiyapa", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "bakchodi", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "time pass", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "timepass", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "chilling", category: "Rest & Leisure", subcategory: "Relaxation", productivity: .wasteful),
+        TaxonomyRule(phrase: "chill", category: "Rest & Leisure", subcategory: "Relaxation", productivity: .wasteful),
+        TaxonomyRule(phrase: "idle", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "wasted", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "wasting time", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "procrastinating", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "procrastination", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "slacking", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "bored", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "faltu", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        TaxonomyRule(phrase: "nonsense", category: "Rest & Leisure", subcategory: "Idle", productivity: .wasteful),
+        
         // MARK: - Productive: Coding & Software Engineering
         TaxonomyRule(phrase: "pair programming", category: "Deep Work", subcategory: "Coding", productivity: .productive),
         TaxonomyRule(phrase: "swiftui", category: "Deep Work", subcategory: "Coding", productivity: .productive),
@@ -240,6 +263,8 @@ public struct ClassifierEngine: Sendable {
         
         // 3. Heuristic / Semantic Keyword Fallback (strictly binary: Productive vs Non-Productive)
         let nonProductiveKeywords = [
+            "nothing", "chutiyap", "chutiyapa", "bakchodi", "timepass", "chill", "chilling", "idle", "wasted",
+            "bored", "nonsense", "faltu", "slacking", "lounging",
             "order", "delivery", "delivered", "grocery", "groceries", "bought", "buy", "purchase", "shopping",
             "lunch", "dinner", "breakfast", "brunch", "eat", "eating", "food", "snack", "coffee", "tea",
             "walk", "nap", "sleep", "slept", "break", "gym", "workout", "errand", "errands", "drive", "driving",
@@ -248,9 +273,11 @@ public struct ClassifierEngine: Sendable {
         ]
         
         for kw in nonProductiveKeywords {
-            if matchesWordToken(text: lowerText, phrase: kw) {
+            if lowerText.contains(kw) || matchesWordToken(text: lowerText, phrase: kw) {
                 let category: String
-                if ["order", "delivery", "delivered", "grocery", "groceries", "bought", "buy", "shopping"].contains(kw) {
+                if ["nothing", "chutiyap", "chutiyapa", "bakchodi", "timepass", "chill", "chilling", "idle", "wasted", "bored", "nonsense", "faltu", "slacking", "lounging"].contains(kw) {
+                    category = "Rest & Leisure"
+                } else if ["order", "delivery", "delivered", "grocery", "groceries", "bought", "buy", "shopping"].contains(kw) {
                     category = "Personal Errands"
                 } else if ["lunch", "dinner", "breakfast", "brunch", "eat", "eating", "food", "snack", "coffee", "tea"].contains(kw) {
                     category = "Rest & Meals"

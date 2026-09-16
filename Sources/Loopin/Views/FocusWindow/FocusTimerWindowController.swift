@@ -23,6 +23,17 @@ public final class FocusTimerWindowController: NSObject, ObservableObject, NSWin
         }
         
         guard let window = window else { return }
+        
+        // Always place in top right area of visible screen
+        if let screen = NSScreen.main {
+            let screenFrame = screen.visibleFrame
+            let winWidth: CGFloat = window.frame.width > 0 ? window.frame.width : 380
+            let winHeight: CGFloat = window.frame.height > 0 ? window.frame.height : 460
+            let x = screenFrame.maxX - winWidth - 20
+            let y = screenFrame.maxY - winHeight - 20
+            window.setFrame(NSRect(x: x, y: y, width: winWidth, height: winHeight), display: true)
+        }
+        
         window.level = isAlwaysOnTop ? .floating : .normal
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -49,8 +60,19 @@ public final class FocusTimerWindowController: NSObject, ObservableObject, NSWin
             )
         )
         
+        let winWidth: CGFloat = 380
+        let winHeight: CGFloat = 460
+        
+        var initialFrame = NSRect(x: 0, y: 0, width: winWidth, height: winHeight)
+        if let screen = NSScreen.main {
+            let screenFrame = screen.visibleFrame
+            let x = screenFrame.maxX - winWidth - 20
+            let y = screenFrame.maxY - winHeight - 20
+            initialFrame = NSRect(x: x, y: y, width: winWidth, height: winHeight)
+        }
+        
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 380, height: 460),
+            contentRect: initialFrame,
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -61,15 +83,15 @@ public final class FocusTimerWindowController: NSObject, ObservableObject, NSWin
         win.titlebarAppearsTransparent = true
         win.isMovableByWindowBackground = true
         win.minSize = NSSize(width: 240, height: 280)
-        win.backgroundColor = .clear
-        win.isOpaque = false
+        win.backgroundColor = NSColor(red: 12/255, green: 14/255, blue: 18/255, alpha: 1.0)
+        win.isOpaque = true
         win.hasShadow = true
+        win.appearance = NSAppearance(named: .darkAqua)
         win.level = isAlwaysOnTop ? .floating : .normal
         win.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         win.delegate = self
         
-        // Centered on screen by default
-        win.center()
+        win.setFrame(initialFrame, display: true)
         win.contentView = hostingView
         self.window = win
     }
@@ -84,46 +106,31 @@ public final class FocusTimerWindowController: NSObject, ObservableObject, NSWin
     }
 }
 
-// MARK: - FocusTimerContainerView (Tahoe Liquid Glass Host)
+// MARK: - FocusTimerContainerView (Seamless Dark Window Host)
 struct FocusTimerContainerView: View {
     @Binding var isAlwaysOnTop: Bool
     var onClose: () -> Void
     
     var body: some View {
         ZStack {
-            // Liquid Glass Background
-            VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
+            // Dark obsidian canvas background that covers full window including titlebar
+            Color(red: 10/255, green: 12/255, blue: 16/255)
                 .ignoresSafeArea()
             
-            // Specular Gradient Mesh Tint
+            // Subtle ambient gradient tint
             LinearGradient(
                 colors: [
-                    Color(red: 20/255, green: 24/255, blue: 30/255).opacity(0.85),
-                    Color(red: 14/255, green: 17/255, blue: 22/255).opacity(0.92)
+                    Color(red: 18/255, green: 22/255, blue: 28/255),
+                    Color(red: 10/255, green: 12/255, blue: 16/255)
                 ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                startPoint: .top,
+                endPoint: .bottom
             )
             .ignoresSafeArea()
             
             FocusTimerView(isAlwaysOnTop: $isAlwaysOnTop, onClose: onClose)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.22),
-                            Color.white.opacity(0.06),
-                            Color.white.opacity(0.02)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        )
+        .ignoresSafeArea(.all)
     }
 }
 

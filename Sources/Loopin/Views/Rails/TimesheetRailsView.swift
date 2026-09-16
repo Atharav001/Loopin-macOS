@@ -10,15 +10,24 @@ public struct TimesheetRailsView: View {
     
     private let hourWidth: CGFloat = 64
     private let railHeight: CGFloat = 38
-    private let totalHours: Int = 24
+    private var visibleHours: [Int] {
+        AppState.shared.visibleTimesheetHours
+    }
     
-    public init(entries: [TimesheetEntry], onSelectEntry: ((TimesheetEntry) -> Void)? = nil) {
-        self.entries = entries
-        self.onSelectEntry = onSelectEntry
+    private var totalHours: Int {
+        max(1, visibleHours.count)
     }
     
     private var totalWidth: CGFloat {
         CGFloat(totalHours) * hourWidth
+    }
+    
+    public init(
+        entries: [TimesheetEntry],
+        onSelectEntry: ((TimesheetEntry) -> Void)? = nil
+    ) {
+        self.entries = entries
+        self.onSelectEntry = onSelectEntry
     }
     
     private var plannedEntries: [TimesheetEntry] {
@@ -31,7 +40,7 @@ public struct TimesheetRailsView: View {
     
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Header with legend
+            // Header with legend & Sleep Hours toggle
             HStack {
                 HStack(spacing: 8) {
                     Image(systemName: "timeline.selection")
@@ -43,21 +52,45 @@ public struct TimesheetRailsView: View {
                 
                 Spacer()
                 
+                // Sleep Hours Visibility Toggle Button
+                Button(action: {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                        AppState.shared.hideSleepHoursOnTimesheet.toggle()
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: AppState.shared.hideSleepHoursOnTimesheet ? "moon.zzz.fill" : "moon.zzz")
+                            .font(.system(size: 9, weight: .bold))
+                        Text(AppState.shared.hideSleepHoursOnTimesheet ? "Sleep Hidden" : "24h")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .foregroundColor(AppState.shared.hideSleepHoursOnTimesheet ? Theme.accentLight : Theme.textMuted)
+                    .padding(.horizontal, 7)
+                    .frame(height: 22)
+                    .background(AppState.shared.hideSleepHoursOnTimesheet ? Theme.accent.opacity(0.18) : Theme.bgSubtle)
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(AppState.shared.hideSleepHoursOnTimesheet ? Theme.accent.opacity(0.4) : Theme.border, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .help(AppState.shared.hideSleepHoursOnTimesheet ? "Sleep hours hidden. Click to show 24 hours." : "Click to hide sleep/quiet hours.")
+                
                 // Color Legend
                 HStack(spacing: 12) {
                     legendItem(label: "Productive", color: Theme.productive)
                     legendItem(label: "Non-Productive", color: Theme.wasteful)
                     legendItem(label: "Planned", color: Theme.planned)
-                    legendItem(label: "Skipped", color: Theme.skipped)
                 }
             }
             
             // Rails container inside horizontal scroll view
             ScrollView(.horizontal, showsIndicators: true) {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Time Ruler (Hours 00:00 to 24:00)
+                    // Time Ruler
                     HStack(spacing: 0) {
-                        ForEach(0..<totalHours, id: \.self) { hour in
+                        ForEach(visibleHours, id: \.self) { hour in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(String(format: "%02d:00", hour))
                                     .font(Theme.caption)
@@ -324,10 +357,23 @@ public struct TimesheetRailsView: View {
     
     private func computePosition(entry: TimesheetEntry) -> (x: CGFloat, width: CGFloat) {
         let cal = Calendar.current
-        let startHour = CGFloat(cal.component(.hour, from: entry.startAt))
+        let startHour = cal.component(.hour, from: entry.startAt)
         let startMin = CGFloat(cal.component(.minute, from: entry.startAt))
-        let x = (startHour + startMin / 60.0) * hourWidth
         
+        let baseIndex: CGFloat
+        if let idx = visibleHours.firstIndex(of: startHour) {
+            baseIndex = CGFloat(idx)
+        } else {
+            if let first = visibleHours.first, startHour < first {
+                baseIndex = 0
+            } else if let last = visibleHours.last, startHour > last {
+                baseIndex = CGFloat(visibleHours.count)
+            } else {
+                baseIndex = 0
+            }
+        }
+        
+        let x = (baseIndex + startMin / 60.0) * hourWidth
         let durationMinutes = CGFloat(entry.durationMinutes)
         let width = (durationMinutes / 60.0) * hourWidth
         return (x, width)
@@ -335,8 +381,11 @@ public struct TimesheetRailsView: View {
     
     private func computeNowOffset() -> CGFloat {
         let cal = Calendar.current
-        let hour = CGFloat(cal.component(.hour, from: currentTime))
+        let hour = cal.component(.hour, from: currentTime)
         let minute = CGFloat(cal.component(.minute, from: currentTime))
-        return (hour + minute / 60.0) * hourWidth
+        guard let idx = visibleHours.firstIndex(of: hour) else {
+            return -100 // hidden when in hidden sleep hours
+        }
+        return (CGFloat(idx) + minute / 60.0) * hourWidth
     }
 }

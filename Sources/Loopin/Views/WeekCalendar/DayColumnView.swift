@@ -7,6 +7,7 @@ public struct DayColumnView: View {
     public let columnWidth: CGFloat
     public let isToday: Bool
     public let use24HourClock: Bool
+    public let hours: [Int]
     
     public var onSelectEntry: ((TimesheetEntry) -> Void)?
     public var onCreateRange: ((Date, Date) -> Void)?
@@ -14,7 +15,9 @@ public struct DayColumnView: View {
     
     @State private var dragSelection: (start: CGFloat, current: CGFloat)?
     
-    private let totalHours: Int = 24
+    private var totalHours: Int {
+        max(1, hours.count)
+    }
     
     public init(
         date: Date,
@@ -23,6 +26,7 @@ public struct DayColumnView: View {
         columnWidth: CGFloat = 140,
         isToday: Bool = false,
         use24HourClock: Bool = false,
+        hours: [Int] = Array(0..<24),
         onSelectEntry: ((TimesheetEntry) -> Void)? = nil,
         onCreateRange: ((Date, Date) -> Void)? = nil,
         onUpdateEntryTime: ((TimesheetEntry, Date, Date) -> Void)? = nil
@@ -33,6 +37,7 @@ public struct DayColumnView: View {
         self.columnWidth = columnWidth
         self.isToday = isToday
         self.use24HourClock = use24HourClock
+        self.hours = hours.isEmpty ? Array(0..<24) : hours
         self.onSelectEntry = onSelectEntry
         self.onCreateRange = onCreateRange
         self.onUpdateEntryTime = onUpdateEntryTime
@@ -209,7 +214,21 @@ public struct DayColumnView: View {
     public func computePositionedEntries() -> [PositionedCalendarEntry] {
         guard !entries.isEmpty else { return [] }
         
-        let sorted = entries.sorted { a, b in
+        let cal = Calendar.current
+        let visibleEntries: [TimesheetEntry]
+        if hours.count < 24 {
+            visibleEntries = entries.filter { entry in
+                let startH = cal.component(.hour, from: entry.startAt)
+                let endH = cal.component(.hour, from: entry.endAt)
+                return hours.contains(startH) || hours.contains(endH)
+            }
+        } else {
+            visibleEntries = entries
+        }
+        
+        guard !visibleEntries.isEmpty else { return [] }
+        
+        let sorted = visibleEntries.sorted { a, b in
             if a.startAt != b.startAt {
                 return a.startAt < b.startAt
             }
@@ -292,9 +311,23 @@ public struct DayColumnView: View {
     
     private func computeYPosition(for entry: TimesheetEntry) -> (y: CGFloat, height: CGFloat) {
         let cal = Calendar.current
-        let hour = CGFloat(cal.component(.hour, from: entry.startAt))
+        let hour = cal.component(.hour, from: entry.startAt)
         let min = CGFloat(cal.component(.minute, from: entry.startAt))
-        let y = (hour + min / 60.0) * hourHeight
+        
+        let baseIndex: CGFloat
+        if let idx = hours.firstIndex(of: hour) {
+            baseIndex = CGFloat(idx)
+        } else {
+            if let first = hours.first, hour < first {
+                baseIndex = 0
+            } else if let last = hours.last, hour > last {
+                baseIndex = CGFloat(hours.count)
+            } else {
+                baseIndex = 0
+            }
+        }
+        
+        let y = (baseIndex + min / 60.0) * hourHeight
         let height = (CGFloat(entry.durationMinutes) / 60.0) * hourHeight
         return (y, max(20, height))
     }
@@ -308,9 +341,14 @@ public struct DayColumnView: View {
     private func dateFromY(_ y: CGFloat) -> Date {
         let cal = Calendar.current
         let startOfDay = cal.startOfDay(for: date)
-        let totalMinutes = Int(round((y / hourHeight) * 60.0 / 15.0) * 15.0)
-        let clampedMinutes = max(0, min(24 * 60 - 15, totalMinutes))
-        return cal.date(byAdding: .minute, value: clampedMinutes, to: startOfDay) ?? date
+        let hourIdx = max(0, min(hours.count - 1, Int(y / hourHeight)))
+        let targetHour = hours[hourIdx]
+        
+        let fraction = max(0.0, min(0.99, (y.truncatingRemainder(dividingBy: hourHeight)) / hourHeight))
+        let snappedMinutes = Int(round(fraction * 4.0)) * 15
+        let clampedMin = max(0, min(59, snappedMinutes))
+        
+        return cal.date(bySettingHour: targetHour, minute: clampedMin, second: 0, of: startOfDay) ?? date
     }
     
     private func formatTimeRange(startY: CGFloat, height: CGFloat) -> String {
@@ -339,8 +377,11 @@ public struct DayColumnView: View {
     private func computeCurrentTimeY() -> CGFloat {
         let cal = Calendar.current
         let now = Date()
-        let hour = CGFloat(cal.component(.hour, from: now))
+        let hour = cal.component(.hour, from: now)
         let min = CGFloat(cal.component(.minute, from: now))
-        return (hour + min / 60.0) * hourHeight
+        guard let idx = hours.firstIndex(of: hour) else {
+            return -100 // hidden when current time is outside visible hours
+        }
+        return (CGFloat(idx) + min / 60.0) * hourHeight
     }
 }
