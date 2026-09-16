@@ -46,8 +46,7 @@ public struct TimesheetRailsView: View {
                 // Color Legend
                 HStack(spacing: 12) {
                     legendItem(label: "Productive", color: Theme.productive)
-                    legendItem(label: "Neutral", color: Theme.neutral)
-                    legendItem(label: "Wasteful", color: Theme.wasteful)
+                    legendItem(label: "Non-Productive", color: Theme.wasteful)
                     legendItem(label: "Planned", color: Theme.planned)
                     legendItem(label: "Skipped", color: Theme.skipped)
                 }

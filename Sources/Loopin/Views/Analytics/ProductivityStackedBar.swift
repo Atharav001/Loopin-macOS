@@ -90,15 +90,17 @@ public struct ProductivityStackedBar: View {
                     color: Theme.productive
                 )
                 
-                ratioLegendItem(
-                    label: "Neutral",
-                    minutes: neutralMinutes,
-                    fraction: neutralFraction,
-                    color: Theme.neutral
-                )
+                if neutralMinutes > 0 {
+                    ratioLegendItem(
+                        label: "Neutral (Legacy)",
+                        minutes: neutralMinutes,
+                        fraction: neutralFraction,
+                        color: Theme.neutral
+                    )
+                }
                 
                 ratioLegendItem(
-                    label: "Wasteful",
+                    label: "Non-Productive",
                     minutes: wastefulMinutes,
                     fraction: wastefulFraction,
                     color: Theme.wasteful

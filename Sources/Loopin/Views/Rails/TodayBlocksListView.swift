@@ -127,8 +127,8 @@ public struct TodayBlocksListView: View {
                 .font(.system(size: 9, weight: .bold))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
-                .background(isPlanned ? Theme.plannedBg : Theme.neutralBg)
-                .foregroundColor(isPlanned ? Theme.planned : Theme.neutral)
+                .background(isPlanned ? Theme.plannedBg : Theme.accent.opacity(0.15))
+                .foregroundColor(isPlanned ? Theme.planned : Theme.accentLight)
                 .cornerRadius(4)
             
             // Raw text / Title

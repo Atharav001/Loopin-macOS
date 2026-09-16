@@ -191,7 +191,7 @@ public struct LoggingPanelContentView: View {
         let rules = DatabaseManager.shared.fetchAllRules()
         let match = ClassifierEngine.classify(text: text, rules: rules)
         let category = selectedCategory ?? match?.category ?? "General"
-        let prod = match?.productivity ?? ProductivityType.productive
+        let prod = match?.productivity ?? ProductivityType.wasteful
         
         let entry = TimesheetEntry(
             kind: EntryKind.logged.rawValue,
@@ -209,8 +209,10 @@ public struct LoggingPanelContentView: View {
         // Trigger breathing glowing celebration effect around the window
         appState.triggerCelebration(color: prod == .productive ? Theme.productive : Theme.accent)
         
-        // Learn rule automatically
-        ClassifierEngine.learnRule(for: text, category: category, productivity: prod)
+        // Only learn a new rule if user explicitly selected a category chip or confirmed a custom category
+        if let explicitCategory = selectedCategory {
+            ClassifierEngine.learnRule(for: text, category: explicitCategory, productivity: prod)
+        }
         
         withAnimation(.easeOut(duration: 0.3)) {
             isSubmitted = true
@@ -223,22 +225,7 @@ public struct LoggingPanelContentView: View {
     }
     
     private func skipLog() {
-        let now = Date()
-        let intervalSecs = Double(appState.selectedIntervalMinutes * 60)
-        let start = appState.promptIntervalStart ?? now.addingTimeInterval(-intervalSecs)
-        let end = appState.promptIntervalEnd ?? now
-        
-        let entry = TimesheetEntry(
-            kind: EntryKind.logged.rawValue,
-            startAt: start,
-            endAt: end,
-            rawText: "Skipped Interval",
-            inputMethod: InputMethod.skipped.rawValue,
-            category: "Break",
-            productivity: ProductivityType.neutral.rawValue
-        )
-        
-        DatabaseManager.shared.insertEntry(entry)
+        // When skipping a prompt, do not log anything for that hour
         dismissPanel()
     }
     

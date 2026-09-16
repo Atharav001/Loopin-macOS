@@ -11,8 +11,7 @@ public struct DictionaryView: View {
     private enum ProductivityFilter: String, CaseIterable, Identifiable {
         case all = "All"
         case productive = "Productive"
-        case neutral = "Neutral"
-        case wasteful = "Wasteful"
+        case wasteful = "Non-Productive"
         
         var id: String { rawValue }
     }
@@ -29,8 +28,7 @@ public struct DictionaryView: View {
             switch selectedFilter {
             case .all: matchesFilter = true
             case .productive: matchesFilter = rule.productivity == "productive"
-            case .neutral: matchesFilter = rule.productivity == "neutral"
-            case .wasteful: matchesFilter = rule.productivity == "wasteful"
+            case .wasteful: matchesFilter = rule.productivity != "productive"
             }
             
             return matchesSearch && matchesFilter

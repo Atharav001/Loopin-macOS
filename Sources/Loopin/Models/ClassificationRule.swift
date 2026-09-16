@@ -26,6 +26,6 @@ public struct ClassificationRule: Identifiable, Codable, Equatable, Sendable {
     }
     
     public var productivityType: ProductivityType {
-        return ProductivityType(rawValue: productivity) ?? .productive
+        return productivity == ProductivityType.productive.rawValue ? .productive : .wasteful
     }
 }

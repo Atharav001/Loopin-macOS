@@ -28,7 +28,7 @@ public struct AnalyticsView: View {
     }
     
     private var wastefulMinutes: Int {
-        entries.filter { $0.kind == EntryKind.logged.rawValue && $0.productivity == "wasteful" }.reduce(0) { $0 + $1.durationMinutes }
+        entries.filter { $0.kind == EntryKind.logged.rawValue && ($0.productivity == "wasteful" || $0.productivity == "neutral") }.reduce(0) { $0 + $1.durationMinutes }
     }
     
     private var focusScorePercentage: Int {
@@ -78,7 +78,7 @@ public struct AnalyticsView: View {
                     // Productivity Ratio Stacked Bar
                     ProductivityStackedBar(
                         productiveMinutes: productiveMinutes,
-                        neutralMinutes: neutralMinutes,
+                        neutralMinutes: 0,
                         wastefulMinutes: wastefulMinutes
                     )
                     

@@ -31,7 +31,11 @@ public final class MenuBarManager: NSObject, @unchecked Sendable {
         openItem.target = self
         menu.addItem(openItem)
         
-        let pomodoroItem = NSMenuItem(title: "Toggle Pomodoro Focus", action: #selector(togglePomodoro), keyEquivalent: "p")
+        let focusTimerItem = NSMenuItem(title: "Open Pomodoro Timer", action: #selector(openFocusTimerWindow), keyEquivalent: "t")
+        focusTimerItem.target = self
+        menu.addItem(focusTimerItem)
+        
+        let pomodoroItem = NSMenuItem(title: "Toggle Background Focus", action: #selector(togglePomodoro), keyEquivalent: "p")
         pomodoroItem.target = self
         menu.addItem(pomodoroItem)
         
@@ -46,6 +50,10 @@ public final class MenuBarManager: NSObject, @unchecked Sendable {
     
     @objc private func triggerLogPrompt() {
         AppState.shared.showFloatingLoggingPanel = true
+    }
+    
+    @objc private func openFocusTimerWindow() {
+        FocusTimerWindowController.shared.show()
     }
     
     @objc private func showMainWindow() {

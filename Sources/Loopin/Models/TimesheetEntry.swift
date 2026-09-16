@@ -3,15 +3,22 @@ import Foundation
 // MARK: - ProductivityType
 public enum ProductivityType: String, Codable, CaseIterable, Sendable {
     case productive = "productive"
-    case neutral = "neutral"
     case wasteful = "wasteful"
+    case neutral = "neutral" // Legacy database mapping
+    
+    public static var allCases: [ProductivityType] {
+        return [.productive, .wasteful]
+    }
     
     public var displayName: String {
         switch self {
         case .productive: return "Productive"
-        case .neutral: return "Neutral"
-        case .wasteful: return "Wasteful"
+        case .wasteful, .neutral: return "Non-Productive"
         }
+    }
+    
+    public var isProductive: Bool {
+        return self == .productive
     }
 }
 

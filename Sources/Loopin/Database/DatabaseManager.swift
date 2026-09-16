@@ -89,6 +89,11 @@ public final class DatabaseManager: @unchecked Sendable {
             _ = self.execute(sql: "ALTER TABLE timesheet_entries ADD COLUMN gcal_event_id TEXT;")
             _ = self.execute(sql: "ALTER TABLE timesheet_entries ADD COLUMN device_id TEXT DEFAULT 'macOS';")
             _ = self.execute(sql: "ALTER TABLE timesheet_entries ADD COLUMN is_synced INTEGER DEFAULT 0;")
+            
+            // Binary productivity migration: migrate all legacy 'neutral' records to 'wasteful' (Non-Productive)
+            _ = self.execute(sql: "UPDATE timesheet_entries SET productivity = 'wasteful' WHERE productivity = 'neutral' OR productivity IS NULL OR productivity = '';")
+            _ = self.execute(sql: "UPDATE classification_rules SET productivity = 'wasteful' WHERE productivity = 'neutral';")
+            _ = self.execute(sql: "DELETE FROM classification_rules WHERE phrase LIKE '%got bigbasket and trying fixing app%';")
         }
     }
     

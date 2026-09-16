@@ -19,26 +19,27 @@ public struct CategoryPreset: Identifiable, Hashable, Sendable {
         CategoryPreset(name: "Coding", defaultProductivity: .productive, iconName: "chevron.left.forwardslash.chevron.right", colorHex: "#6366F1"),
         CategoryPreset(name: "Engineering", defaultProductivity: .productive, iconName: "cpu", colorHex: "#3B82F6"),
         CategoryPreset(name: "Design", defaultProductivity: .productive, iconName: "paintpalette", colorHex: "#EC4899"),
-        CategoryPreset(name: "Meeting", defaultProductivity: .neutral, iconName: "person.2", colorHex: "#8B5CF6"),
+        CategoryPreset(name: "Meeting", defaultProductivity: .productive, iconName: "person.2", colorHex: "#8B5CF6"),
         CategoryPreset(name: "Research", defaultProductivity: .productive, iconName: "book", colorHex: "#10B981"),
-        CategoryPreset(name: "Email & Admin", defaultProductivity: .neutral, iconName: "envelope", colorHex: "#64748B"),
+        CategoryPreset(name: "Email & Admin", defaultProductivity: .productive, iconName: "envelope", colorHex: "#64748B"),
         CategoryPreset(name: "Planning", defaultProductivity: .productive, iconName: "calendar", colorHex: "#A855F7"),
-        CategoryPreset(name: "Break", defaultProductivity: .neutral, iconName: "cup.and.saucer", colorHex: "#F59E0B"),
+        CategoryPreset(name: "Meals & Lunch", defaultProductivity: .wasteful, iconName: "fork.knife", colorHex: "#F59E0B"),
+        CategoryPreset(name: "Personal Errands", defaultProductivity: .wasteful, iconName: "cart.fill", colorHex: "#F97316"),
+        CategoryPreset(name: "Break", defaultProductivity: .wasteful, iconName: "cup.and.saucer", colorHex: "#EAB308"),
         CategoryPreset(name: "Social Media", defaultProductivity: .wasteful, iconName: "globe", colorHex: "#EF4444"),
         CategoryPreset(name: "YouTube Watching", defaultProductivity: .wasteful, iconName: "play.rectangle", colorHex: "#DC2626"),
         CategoryPreset(name: "Gaming", defaultProductivity: .wasteful, iconName: "gamecontroller", colorHex: "#E11D48"),
-        CategoryPreset(name: "Other", defaultProductivity: .neutral, iconName: "tag", colorHex: "#94A3B8")
+        CategoryPreset(name: "Other", defaultProductivity: .wasteful, iconName: "tag", colorHex: "#94A3B8")
     ]
 }
 
 public extension Color {
     @MainActor
     static func forProductivity(_ prod: ProductivityType?) -> Color {
-        guard let p = prod else { return Theme.neutral }
+        guard let p = prod else { return Theme.wasteful }
         switch p {
         case .productive: return Theme.productive
-        case .neutral: return Theme.neutral
-        case .wasteful: return Theme.wasteful
+        case .wasteful, .neutral: return Theme.wasteful
         }
     }
     

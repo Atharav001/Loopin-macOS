@@ -42,5 +42,30 @@ final class ParserTests: XCTestCase {
         XCTAssertNotNil(match2)
         XCTAssertEqual(match2?.category, "Coding")
         XCTAssertEqual(match2?.productivity, .productive)
+        
+        // Test user's specific test cases
+        let matchBigBasket = ClassifierEngine.classify(text: "Got big basket order", rules: rules)
+        XCTAssertNotNil(matchBigBasket)
+        XCTAssertEqual(matchBigBasket?.productivity, .wasteful, "'Got big basket order' must be classified as Non-Productive")
+        
+        let matchLunch = ClassifierEngine.classify(text: "I went to lunch", rules: rules)
+        XCTAssertNotNil(matchLunch)
+        XCTAssertEqual(matchLunch?.productivity, .wasteful, "'I went to lunch' must be classified as Non-Productive")
+        
+        let matchBlinkit = ClassifierEngine.classify(text: "Blinkit grocery delivery", rules: rules)
+        XCTAssertNotNil(matchBlinkit)
+        XCTAssertEqual(matchBlinkit?.productivity, .wasteful)
+        
+        let matchSwiggy = ClassifierEngine.classify(text: "Having swiggy dinner", rules: rules)
+        XCTAssertNotNil(matchSwiggy)
+        XCTAssertEqual(matchSwiggy?.productivity, .wasteful)
+        
+        let matchPairCoding = ClassifierEngine.classify(text: "Pair programming on SwiftUI", rules: rules)
+        XCTAssertNotNil(matchPairCoding)
+        XCTAssertEqual(matchPairCoding?.productivity, .productive)
+        
+        // Ensure neutral rule migration mapping in ClassificationRule
+        let legacyNeutralRule = ClassificationRule(phrase: "legacy test", category: "Rest", productivity: "neutral")
+        XCTAssertEqual(legacyNeutralRule.productivityType, .wasteful, "Legacy neutral rules must strictly map to Non-Productive")
     }
 }

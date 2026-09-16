@@ -9,19 +9,24 @@ public final class NotificationService: NSObject, ObservableObject, UNUserNotifi
     
     @Published public var isAuthorized: Bool = false
     
-    private let center = UNUserNotificationCenter.current()
-    public static let categoryHourlyCheckIn = "HOURLY_CHECKIN"
-    public static let actionLogNow = "ACTION_LOG_NOW"
-    public static let actionSkip = "ACTION_SKIP"
+    private var center: UNUserNotificationCenter? {
+        guard Bundle.main.bundlePath.hasSuffix(".app") else { return nil }
+        return UNUserNotificationCenter.current()
+    }
+    public nonisolated static let categoryHourlyCheckIn = "HOURLY_CHECKIN"
+    public nonisolated static let actionLogNow = "ACTION_LOG_NOW"
+    public nonisolated static let actionSkip = "ACTION_SKIP"
     
     public override init() {
         super.init()
-        center.delegate = self
+        if Bundle.main.bundleIdentifier != nil {
+            center?.delegate = self
+        }
     }
     
     // MARK: - Setup & Authorization
     public func requestAuthorization() {
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
+        center?.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
             Task { @MainActor in
                 self?.isAuthorized = granted
                 if granted {
@@ -53,7 +58,7 @@ public final class NotificationService: NSObject, ObservableObject, UNUserNotifi
             options: [.customDismissAction]
         )
         
-        center.setNotificationCategories([category])
+        center?.setNotificationCategories([category])
     }
     
     // MARK: - Trigger Hourly Check-In Notification
@@ -76,7 +81,7 @@ public final class NotificationService: NSObject, ObservableObject, UNUserNotifi
             trigger: nil // Deliver immediately
         )
         
-        center.add(request) { error in
+        center?.add(request) { error in
             if let error = error {
                 print("[NotificationService] Failed to post notification: \(error)")
             }
@@ -102,7 +107,16 @@ public final class NotificationService: NSObject, ObservableObject, UNUserNotifi
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
+        let actionIdentifier = response.actionIdentifier
+        let isSkipAction = (actionIdentifier == Self.actionSkip || actionIdentifier == UNNotificationDismissActionIdentifier)
+        
         Task { @MainActor in
+            if isSkipAction {
+                // User explicitly skipped or dismissed notification: do not open panel and do not log anything for that hour
+                AppState.shared.showFloatingLoggingPanel = false
+                return
+            }
+            
             NSApp.activate(ignoringOtherApps: true)
             AppState.shared.showFloatingLoggingPanel = true
         }
