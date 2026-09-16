@@ -124,6 +124,12 @@ public final class AppState: ObservableObject {
     @Published public var editingEntry: TimesheetEntry?
     @Published public var showEntryEditor: Bool = false
     
+    // Clock-aligned hourly prompt state
+    @Published public var alignToClockHour: Bool = true
+    @Published public var promptIntervalStart: Date?
+    @Published public var promptIntervalEnd: Date?
+    private var lastTriggeredHourKey: String = ""
+    
     private var countdownCancellable: AnyCancellable?
     
     public func triggerCelebration(color: Color? = nil) {
@@ -136,49 +142,109 @@ public final class AppState: ObservableObject {
     }
     
     public func startIntervalCountdown() {
-        timeRemainingInInterval = selectedIntervalMinutes * 60
         countdownCancellable?.cancel()
         
         countdownCancellable = Timer.publish(every: 1.0, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 guard let self = self, self.isTimerRunning else { return }
-                
-                if self.timeRemainingInInterval > 0 {
-                    self.timeRemainingInInterval -= 1
-                } else {
-                    // Interval reached
-                    self.handleIntervalTrigger()
-                }
-                
-                // Also tick pomodoro if running
-                if self.isPomodoroRunning {
-                    if self.pomodoroSecondsRemaining > 0 {
-                        self.pomodoroSecondsRemaining -= 1
-                    } else {
-                        self.isPomodoroBreak.toggle()
-                        self.pomodoroSecondsRemaining = (self.isPomodoroBreak ? self.pomodoroBreakMinutes : self.pomodoroDurationMinutes) * 60
-                    }
-                }
+                self.tickTimer()
             }
+    }
+    
+    private func tickTimer() {
+        let now = Date()
+        let cal = Calendar.current
+        
+        if alignToClockHour && selectedIntervalMinutes == 60 {
+            let minute = cal.component(.minute, from: now)
+            let second = cal.component(.second, from: now)
+            let secondsPastHour = minute * 60 + second
+            let remaining = 3600 - secondsPastHour
+            timeRemainingInInterval = max(0, remaining)
+            
+            // Check top of the hour trigger (minute == 0, within first 3 seconds)
+            let hourKey = "\(cal.component(.year, from: now))-\(cal.component(.month, from: now))-\(cal.component(.day, from: now))-\(cal.component(.hour, from: now))"
+            if minute == 0 && second <= 3 && lastTriggeredHourKey != hourKey {
+                lastTriggeredHourKey = hourKey
+                
+                // Completed 1-hour interval (e.g. 9:00 to 10:00 when clock hits 10:00)
+                let endHour = cal.date(bySetting: .minute, value: 0, of: cal.date(bySetting: .second, value: 0, of: now) ?? now) ?? now
+                let startHour = cal.date(byAdding: .hour, value: -1, to: endHour) ?? endHour.addingTimeInterval(-3600)
+                
+                triggerHourlyPrompt(start: startHour, end: endHour)
+            }
+        } else {
+            // Free-running interval countdown
+            if timeRemainingInInterval > 0 {
+                timeRemainingInInterval -= 1
+            } else {
+                timeRemainingInInterval = selectedIntervalMinutes * 60
+                let start = now.addingTimeInterval(-Double(selectedIntervalMinutes * 60))
+                triggerHourlyPrompt(start: start, end: now)
+            }
+        }
+        
+        // Also tick Pomodoro if active
+        if isPomodoroRunning {
+            if pomodoroSecondsRemaining > 0 {
+                pomodoroSecondsRemaining -= 1
+            } else {
+                isPomodoroBreak.toggle()
+                pomodoroSecondsRemaining = (isPomodoroBreak ? pomodoroBreakMinutes : pomodoroDurationMinutes) * 60
+            }
+        }
     }
     
     public func setIntervalMinutes(_ minutes: Int) {
         selectedIntervalMinutes = minutes
-        timeRemainingInInterval = minutes * 60
+        if !alignToClockHour || minutes != 60 {
+            timeRemainingInInterval = minutes * 60
+        }
     }
     
-    public func handleIntervalTrigger() {
-        // Reset timer
-        timeRemainingInInterval = selectedIntervalMinutes * 60
+    public func handleManualIntervalTrigger() {
+        let now = Date()
+        let cal = Calendar.current
+        let startHour: Date
+        let endHour: Date
         
-        // Check quiet hours before opening panel
+        if alignToClockHour && selectedIntervalMinutes == 60 {
+            endHour = cal.date(bySetting: .minute, value: 0, of: cal.date(bySetting: .second, value: 0, of: now) ?? now) ?? now
+            startHour = cal.date(byAdding: .hour, value: -1, to: endHour) ?? endHour.addingTimeInterval(-3600)
+        } else {
+            endHour = now
+            startHour = now.addingTimeInterval(-Double(selectedIntervalMinutes * 60))
+        }
+        
+        triggerHourlyPrompt(start: startHour, end: endHour)
+    }
+    
+    public func triggerHourlyPrompt(start: Date, end: Date) {
+        promptIntervalStart = start
+        promptIntervalEnd = end
+        
+        let f = DateFormatter()
+        f.dateFormat = use24HourClock ? "HH:mm" : "h:mm a"
+        let rangeStr = "\(f.string(from: start)) – \(f.string(from: end))"
+        
+        // Post native macOS banner notification via NotificationService
+        NotificationService.shared.sendHourlyCheckInNotification(
+            intervalRange: rangeStr,
+            startHour: start,
+            endHour: end
+        )
+        
+        // Check quiet hours before opening floating panel
         if quietHoursEnabled && isWithinQuietHours(now: Date()) {
-            print("Prompt skipped due to active quiet hours.")
+            print("[AppState] Prompt window skipped due to active quiet hours.")
             return
         }
         
-        // Show floating panel
+        if soundEnabled {
+            NSSound.beep()
+        }
+        
         showFloatingLoggingPanel = true
     }
     
@@ -201,4 +267,15 @@ public final class AppState: ObservableObject {
         let secs = timeRemainingInInterval % 60
         return String(format: "%02d:%02d", mins, secs)
     }
+    
+    public var formattedCurrentPromptInterval: String {
+        let cal = Calendar.current
+        let now = Date()
+        let start = promptIntervalStart ?? cal.date(byAdding: .hour, value: -1, to: now) ?? now.addingTimeInterval(-3600)
+        let end = promptIntervalEnd ?? now
+        let f = DateFormatter()
+        f.dateFormat = use24HourClock ? "HH:mm" : "h:mm a"
+        return "\(f.string(from: start)) – \(f.string(from: end))"
+    }
 }
+

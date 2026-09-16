@@ -184,7 +184,8 @@ public struct LoggingPanelContentView: View {
         
         let now = Date()
         let intervalSecs = Double(appState.selectedIntervalMinutes * 60)
-        let start = now.addingTimeInterval(-intervalSecs)
+        let start = appState.promptIntervalStart ?? now.addingTimeInterval(-intervalSecs)
+        let end = appState.promptIntervalEnd ?? now
         
         // Auto-classify
         let rules = DatabaseManager.shared.fetchAllRules()
@@ -195,7 +196,7 @@ public struct LoggingPanelContentView: View {
         let entry = TimesheetEntry(
             kind: EntryKind.logged.rawValue,
             startAt: start,
-            endAt: now,
+            endAt: end,
             rawText: text,
             inputMethod: isListening ? InputMethod.voice.rawValue : InputMethod.typed.rawValue,
             category: category,
@@ -224,12 +225,13 @@ public struct LoggingPanelContentView: View {
     private func skipLog() {
         let now = Date()
         let intervalSecs = Double(appState.selectedIntervalMinutes * 60)
-        let start = now.addingTimeInterval(-intervalSecs)
+        let start = appState.promptIntervalStart ?? now.addingTimeInterval(-intervalSecs)
+        let end = appState.promptIntervalEnd ?? now
         
         let entry = TimesheetEntry(
             kind: EntryKind.logged.rawValue,
             startAt: start,
-            endAt: now,
+            endAt: end,
             rawText: "Skipped Interval",
             inputMethod: InputMethod.skipped.rawValue,
             category: "Break",
@@ -248,12 +250,7 @@ public struct LoggingPanelContentView: View {
     }
     
     private var formattedTimeInterval: String {
-        let now = Date()
-        let intervalSecs = Double(appState.selectedIntervalMinutes * 60)
-        let start = now.addingTimeInterval(-intervalSecs)
-        let f = DateFormatter()
-        f.dateFormat = appState.use24HourClock ? "HH:mm" : "h:mm a"
-        return "\(f.string(from: start)) – \(f.string(from: now))"
+        return appState.formattedCurrentPromptInterval
     }
     
     private func dismissPanel() {

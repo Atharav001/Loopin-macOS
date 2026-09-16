@@ -7,8 +7,8 @@ public final class LoggingScheduler: ObservableObject, @unchecked Sendable {
     public static let shared = LoggingScheduler()
     
     @Published public var isRunning: Bool = true
-    @Published public var intervalMinutes: Int = 15
-    @Published public var secondsRemaining: Int = 15 * 60
+    @Published public var intervalMinutes: Int = 60
+    @Published public var secondsRemaining: Int = 60 * 60
     
     // Quiet Hours settings
     @Published public var quietHoursEnabled: Bool = true
@@ -19,43 +19,23 @@ public final class LoggingScheduler: ObservableObject, @unchecked Sendable {
     
     public var onTriggerPrompt: (() -> Void)?
     
-    private var timer: AnyCancellable?
-    
     public init() {
-        startTimer()
+        // Synchronize with AppState settings
+        self.intervalMinutes = AppState.shared.selectedIntervalMinutes
+        self.secondsRemaining = AppState.shared.timeRemainingInInterval
     }
     
     public func startTimer() {
-        secondsRemaining = intervalMinutes * 60
-        timer?.cancel()
-        
-        timer = Timer.publish(every: 1.0, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                guard let self = self, self.isRunning else { return }
-                
-                if self.secondsRemaining > 0 {
-                    self.secondsRemaining -= 1
-                } else {
-                    self.triggerPrompt()
-                }
-            }
+        AppState.shared.startIntervalCountdown()
     }
     
     public func updateInterval(minutes: Int) {
         intervalMinutes = minutes
-        secondsRemaining = minutes * 60
+        AppState.shared.setIntervalMinutes(minutes)
     }
     
     public func triggerPrompt() {
-        secondsRemaining = intervalMinutes * 60
-        
-        let now = Date()
-        if quietHoursEnabled && isWithinQuietHours(now: now) {
-            print("[LoggingScheduler] Quiet hours active (\(quietHoursStartHour):\(quietHoursStartMinute) to \(quietHoursEndHour):\(quietHoursEndMinute)), skipping prompt.")
-            return
-        }
-        
+        AppState.shared.handleManualIntervalTrigger()
         onTriggerPrompt?()
     }
     

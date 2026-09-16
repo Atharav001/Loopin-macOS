@@ -7,6 +7,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         setupDockIcon()
         Task { @MainActor in
             MenuBarManager.shared.setupMenuBar()
+            NotificationService.shared.requestAuthorization()
         }
     }
     

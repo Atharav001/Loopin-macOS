@@ -54,4 +54,21 @@ final class LoopinTests: XCTestCase {
         XCTAssertEqual(state.googleUserEmail, "atharav.narang@gmail.com")
         XCTAssertTrue(state.googleCalendarSyncEnabled)
     }
+    
+    @MainActor
+    func testHourlyClockAlignment() {
+        let state = AppState.shared
+        state.alignToClockHour = true
+        state.selectedIntervalMinutes = 60
+        
+        let now = Date()
+        let cal = Calendar.current
+        let startHour = cal.date(byAdding: .hour, value: -1, to: now) ?? now
+        
+        state.triggerHourlyPrompt(start: startHour, end: now)
+        XCTAssertNotNil(state.promptIntervalStart)
+        XCTAssertNotNil(state.promptIntervalEnd)
+        XCTAssertFalse(state.formattedCurrentPromptInterval.isEmpty)
+    }
 }
+
