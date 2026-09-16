@@ -60,7 +60,7 @@ public final class FocusTimerWindowController: NSObject, ObservableObject, NSWin
         win.titleVisibility = .hidden
         win.titlebarAppearsTransparent = true
         win.isMovableByWindowBackground = true
-        win.minSize = NSSize(width: 280, height: 320)
+        win.minSize = NSSize(width: 240, height: 280)
         win.backgroundColor = .clear
         win.isOpaque = false
         win.hasShadow = true
@@ -74,8 +74,13 @@ public final class FocusTimerWindowController: NSObject, ObservableObject, NSWin
         self.window = win
     }
     
+    public func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)
+        return false
+    }
+    
     public func windowWillClose(_ notification: Notification) {
-        // Keep window reference or clean up
+        // Keep window reference
     }
 }
 
