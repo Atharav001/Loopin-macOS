@@ -27,14 +27,14 @@ public struct TodayBlocksListView: View {
                     Image(systemName: "list.bullet.rectangle.portrait")
                         .foregroundColor(Theme.accentLight)
                     Text("Today's Blocks Breakdown")
-                        .font(Theme.titleSmall)
+                        .font(Theme.titleMedium)
                         .foregroundColor(Theme.textPrimary)
                 }
                 
                 Spacer()
                 
                 Text("\(entries.count) blocks")
-                    .font(Theme.caption)
+                    .font(Theme.captionBold)
                     .foregroundColor(Theme.textSecondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -50,7 +50,7 @@ public struct TodayBlocksListView: View {
                         .foregroundColor(Theme.textMuted)
                     
                     Text("No blocks recorded for today yet")
-                        .font(Theme.bodyMedium)
+                        .font(Theme.body)
                         .foregroundColor(Theme.textSecondary)
                     
                     Text("Type a quick plan above or click below to seed starter blocks.")
@@ -64,7 +64,7 @@ public struct TodayBlocksListView: View {
                             Image(systemName: "sparkles")
                             Text("Seed Sample Day")
                         }
-                        .font(Theme.caption)
+                        .font(Theme.captionBold)
                         .foregroundColor(Theme.accentLight)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
@@ -113,7 +113,7 @@ public struct TodayBlocksListView: View {
             // Time range & Duration
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.formattedTimeRange)
-                    .font(Theme.caption)
+                    .font(Theme.subheadline)
                     .foregroundColor(Theme.textSecondary)
                 
                 Text(entry.formattedDuration)
@@ -124,7 +124,7 @@ public struct TodayBlocksListView: View {
             
             // Kind Badge
             Text(isPlanned ? "PLANNED" : "LOGGED")
-                .font(.system(size: 9, weight: .bold))
+                .font(Theme.captionBold)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .background(isPlanned ? Theme.plannedBg : Theme.accent.opacity(0.15))
@@ -133,7 +133,7 @@ public struct TodayBlocksListView: View {
             
             // Raw text / Title
             Text(entry.rawText)
-                .font(Theme.bodyMedium)
+                .font(Theme.headline)
                 .foregroundColor(Theme.textPrimary)
                 .lineLimit(1)
             
@@ -142,7 +142,7 @@ public struct TodayBlocksListView: View {
             // Category Badge
             if let category = entry.category {
                 Text(category)
-                    .font(Theme.caption)
+                    .font(Theme.captionBold)
                     .foregroundColor(Theme.textSecondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -157,12 +157,12 @@ public struct TodayBlocksListView: View {
                         .fill(Color.forProductivity(prod))
                         .frame(width: 6, height: 6)
                     Text(prod.displayName)
-                        .font(Theme.caption)
+                        .font(Theme.captionBold)
                         .foregroundColor(Color.forProductivity(prod))
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(Color.forProductivity(prod).opacity(0.12))
+                .background(Color.forProductivity(prod).opacity(0.15))
                 .cornerRadius(6)
             }
             

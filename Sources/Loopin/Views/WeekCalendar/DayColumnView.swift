@@ -94,19 +94,25 @@ public struct DayColumnView: View {
                         }
                 )
             
-            // 3. Rendered Entry Blocks
-            ForEach(entries) { entry in
-                let (yOffset, h) = computeYPosition(for: entry)
+            // 3. Rendered Entry Blocks (Side-by-side alignment when multiple tasks overlap)
+            ForEach(computePositionedEntries()) { item in
+                let totalCols = CGFloat(item.totalCols)
+                let gap: CGFloat = totalCols > 1 ? 2.0 : 0.0
+                let totalGaps = (totalCols - 1) * gap
+                let availableW = max(24, columnWidth - 4 - totalGaps)
+                let blockW = max(20, availableW / totalCols)
+                let xOffset = 2 + CGFloat(item.colIndex) * (blockW + gap)
+                
                 EntryBlockView(
-                    entry: entry,
+                    entry: item.entry,
                     hourHeight: hourHeight,
                     use24HourClock: use24HourClock,
                     onSelect: { selected in
                         onSelectEntry?(selected)
                     }
                 )
-                .frame(width: max(40, columnWidth - 4), height: h)
-                .offset(x: 2, y: yOffset)
+                .frame(width: blockW, height: item.height)
+                .offset(x: xOffset, y: item.y)
             }
             
             // 4. Clockify Live Drag-to-Create Selection Block
@@ -188,6 +194,100 @@ public struct DayColumnView: View {
                 .frame(width: 1),
             alignment: .trailing
         )
+    }
+    
+    // MARK: - Side-by-Side Overlapping Events Algorithm
+    public struct PositionedCalendarEntry: Identifiable, Sendable {
+        public let id: String
+        public let entry: TimesheetEntry
+        public let colIndex: Int
+        public let totalCols: Int
+        public let y: CGFloat
+        public let height: CGFloat
+    }
+    
+    public func computePositionedEntries() -> [PositionedCalendarEntry] {
+        guard !entries.isEmpty else { return [] }
+        
+        let sorted = entries.sorted { a, b in
+            if a.startAt != b.startAt {
+                return a.startAt < b.startAt
+            }
+            return a.duration > b.duration
+        }
+        
+        struct RawBounds {
+            let entry: TimesheetEntry
+            let y: CGFloat
+            let height: CGFloat
+            var bottom: CGFloat { y + height }
+        }
+        
+        let rawList = sorted.map { entry -> RawBounds in
+            let (y, h) = computeYPosition(for: entry)
+            return RawBounds(entry: entry, y: y, height: h)
+        }
+        
+        // Group into overlapping clusters
+        var clusters: [[RawBounds]] = []
+        var currentCluster: [RawBounds] = []
+        var clusterMaxBottom: CGFloat = 0
+        
+        for item in rawList {
+            if currentCluster.isEmpty {
+                currentCluster.append(item)
+                clusterMaxBottom = item.bottom
+            } else {
+                if item.y < clusterMaxBottom - 0.5 {
+                    currentCluster.append(item)
+                    clusterMaxBottom = max(clusterMaxBottom, item.bottom)
+                } else {
+                    clusters.append(currentCluster)
+                    currentCluster = [item]
+                    clusterMaxBottom = item.bottom
+                }
+            }
+        }
+        if !currentCluster.isEmpty {
+            clusters.append(currentCluster)
+        }
+        
+        var result: [PositionedCalendarEntry] = []
+        
+        for cluster in clusters {
+            var columnBottoms: [CGFloat] = []
+            var placements: [(RawBounds, Int)] = []
+            
+            for item in cluster {
+                var assignedCol = -1
+                for c in 0..<columnBottoms.count {
+                    if columnBottoms[c] <= item.y + 0.5 {
+                        assignedCol = c
+                        columnBottoms[c] = item.bottom
+                        break
+                    }
+                }
+                if assignedCol == -1 {
+                    assignedCol = columnBottoms.count
+                    columnBottoms.append(item.bottom)
+                }
+                placements.append((item, assignedCol))
+            }
+            
+            let totalColumnsInCluster = max(1, columnBottoms.count)
+            for (item, col) in placements {
+                result.append(PositionedCalendarEntry(
+                    id: item.entry.id,
+                    entry: item.entry,
+                    colIndex: col,
+                    totalCols: totalColumnsInCluster,
+                    y: item.y,
+                    height: item.height
+                ))
+            }
+        }
+        
+        return result
     }
     
     private func computeYPosition(for entry: TimesheetEntry) -> (y: CGFloat, height: CGFloat) {

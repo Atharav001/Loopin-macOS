@@ -141,42 +141,42 @@ public enum Theme {
     }
     
     @MainActor public static var accentGlow: Color {
-        accent.opacity(0.35)
+        accent.opacity(0.18)
     }
     
-    // Harmonious Status Colors (Calibrated, Non-Neon)
+    // Bright, Bold Colors (Solid, Vivid, Pure Non-Neon)
     @MainActor public static var productive: Color {
         activeTheme.isDark
-            ? Color(red: 52/255, green: 211/255, blue: 153/255)  // #34D399 (Emerald 400)
-            : Color(red: 16/255, green: 149/255, blue: 106/255)  // #10956A (Emerald 600)
+            ? Color(red: 16/255, green: 185/255, blue: 129/255)  // #10B981 (Bold Emerald 500)
+            : Color(red: 5/255, green: 150/255, blue: 105/255)   // #059669 (Deep Emerald 600)
     }
-    @MainActor public static var productiveBg: Color { productive.opacity(activeTheme.isDark ? 0.16 : 0.12) }
+    @MainActor public static var productiveBg: Color { productive.opacity(activeTheme.isDark ? 0.18 : 0.12) }
     
     @MainActor public static var neutral: Color {
         activeTheme.isDark
-            ? Color(red: 56/255, green: 189/255, blue: 248/255)  // #38BDF8 (Sky 400)
-            : Color(red: 2/255, green: 132/255, blue: 199/255)   // #0284C7 (Sky 600)
+            ? Color(red: 59/255, green: 130/255, blue: 246/255)  // #3B82F6 (Bold Azure 500)
+            : Color(red: 29/255, green: 78/255, blue: 216/255)   // #1D4ED8 (Deep Azure 700)
     }
-    @MainActor public static var neutralBg: Color { neutral.opacity(activeTheme.isDark ? 0.16 : 0.12) }
+    @MainActor public static var neutralBg: Color { neutral.opacity(activeTheme.isDark ? 0.18 : 0.12) }
     
     @MainActor public static var wasteful: Color {
         activeTheme.isDark
-            ? Color(red: 251/255, green: 113/255, blue: 133/255) // #FB7185 (Rose 400)
-            : Color(red: 225/255, green: 29/255, blue: 72/255)   // #E11D48 (Rose 600)
+            ? Color(red: 239/255, green: 68/255, blue: 68/255)   // #EF4444 (Bold Crimson Red 500)
+            : Color(red: 220/255, green: 38/255, blue: 38/255)   // #DC2626 (Deep Crimson Red 600)
     }
-    @MainActor public static var wastefulBg: Color { wasteful.opacity(activeTheme.isDark ? 0.16 : 0.12) }
+    @MainActor public static var wastefulBg: Color { wasteful.opacity(activeTheme.isDark ? 0.18 : 0.12) }
     
     @MainActor public static var planned: Color {
         activeTheme.isDark
-            ? Color(red: 167/255, green: 139/255, blue: 250/255) // #A78BFA (Violet 400)
-            : Color(red: 124/255, green: 58/255, blue: 237/255)  // #7C3AED (Violet 600)
+            ? Color(red: 139/255, green: 92/255, blue: 246/255)  // #8B5CF6 (Bold Royal Violet 500)
+            : Color(red: 109/255, green: 40/255, blue: 217/255)  // #6D28D9 (Deep Royal Violet 700)
     }
-    @MainActor public static var plannedBg: Color { planned.opacity(activeTheme.isDark ? 0.16 : 0.12) }
+    @MainActor public static var plannedBg: Color { planned.opacity(activeTheme.isDark ? 0.18 : 0.12) }
     
     @MainActor public static var skipped: Color {
         activeTheme.isDark
-            ? Color(red: 148/255, green: 163/255, blue: 184/255) // #94A3B8
-            : Color(red: 100/255, green: 116/255, blue: 139/255) // #64748B
+            ? Color(red: 148/255, green: 163/255, blue: 184/255) // #94A3B8 (Slate 400)
+            : Color(red: 100/255, green: 116/255, blue: 139/255) // #64748B (Slate 500)
     }
     @MainActor public static var skippedBg: Color { skipped.opacity(activeTheme.isDark ? 0.16 : 0.12) }
     
@@ -189,7 +189,7 @@ public enum Theme {
         if activeTheme.isDark {
             return Color(red: 248/255, green: 250/255, blue: 252/255) // #F8FAFC
         } else {
-            return Color(red: 30/255, green: 41/255, blue: 59/255)    // #1E293B
+            return Color(red: 15/255, green: 23/255, blue: 42/255)     // #0F172A
         }
     }
     
@@ -230,13 +230,18 @@ public enum Theme {
         accent.opacity(0.4)
     }
     
-    // Typography Presets
-    public static let titleLarge = Font.system(size: 20, weight: .bold, design: .rounded)
-    public static let titleMedium = Font.system(size: 15, weight: .semibold, design: .rounded)
+    // Typography Hierarchy Presets (Display -> Title -> Headline -> Body -> Caption -> Mono)
+    public static let display = Font.system(size: 22, weight: .bold, design: .rounded)
+    public static let titleLarge = Font.system(size: 18, weight: .bold, design: .rounded)
+    public static let titleMedium = Font.system(size: 15, weight: .bold, design: .rounded)
     public static let titleSmall = Font.system(size: 13, weight: .semibold, design: .rounded)
+    public static let headline = Font.system(size: 12, weight: .bold, design: .rounded)
     public static let body = Font.system(size: 12, weight: .regular, design: .default)
     public static let bodyMedium = Font.system(size: 12, weight: .medium, design: .default)
-    public static let caption = Font.system(size: 10.5, weight: .medium, design: .default)
+    public static let bodyRegular = Font.system(size: 12, weight: .regular, design: .default)
+    public static let subheadline = Font.system(size: 11, weight: .semibold, design: .default)
+    public static let caption = Font.system(size: 10, weight: .medium, design: .default)
+    public static let captionBold = Font.system(size: 10, weight: .bold, design: .rounded)
     public static let mono = Font.system(size: 11, weight: .regular, design: .monospaced)
     public static let monoBold = Font.system(size: 11, weight: .bold, design: .monospaced)
 }

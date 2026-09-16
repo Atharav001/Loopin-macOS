@@ -80,7 +80,7 @@ public struct EntryBlockView: View {
                     )
             }
             
-            // Left Clockify Color Strip
+            // Left Solid Color Strip
             HStack(spacing: 0) {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(blockColor)
@@ -88,41 +88,45 @@ public struct EntryBlockView: View {
                     .padding(.vertical, 3)
                     .padding(.leading, 3)
                 
-                // Content
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text(entry.rawText.isEmpty ? "Untitled" : entry.rawText)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundColor(Theme.textPrimary)
-                            .lineLimit(computedHeight < 40 ? 1 : 2)
-                        
-                        Spacer(minLength: 0)
-                        
-                        Text(entry.formattedDuration)
-                            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
-                            .foregroundColor(blockColor)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(blockColor.opacity(0.16))
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                // Content with clear hierarchy
+                VStack(alignment: .leading, spacing: 1.5) {
+                    // Title
+                    Text(entry.rawText.isEmpty ? "Untitled" : entry.rawText)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(Theme.textPrimary)
+                        .lineLimit(computedHeight < 40 ? 1 : 2)
+                    
+                    // Meta row: Duration & Time / Category
+                    if computedHeight >= 32 {
+                        HStack(spacing: 3) {
+                            Text(entry.formattedDuration)
+                                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                                .foregroundColor(blockColor)
+                                .padding(.horizontal, 3.5)
+                                .padding(.vertical, 1)
+                                .background(blockColor.opacity(0.18))
+                                .clipShape(RoundedRectangle(cornerRadius: 3))
+                            
+                            if computedHeight >= 44 {
+                                if let category = entry.category {
+                                    Text(category)
+                                        .font(.system(size: 8.5, weight: .semibold))
+                                        .foregroundColor(Theme.textSecondary)
+                                        .padding(.horizontal, 3.5)
+                                        .padding(.vertical, 1)
+                                        .background(Theme.bgDark)
+                                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
                     }
                     
-                    if computedHeight >= 42 {
-                        HStack(spacing: 4) {
-                            if let category = entry.category {
-                                Text(category)
-                                    .font(.system(size: 8.5, weight: .medium))
-                                    .foregroundColor(Theme.textSecondary)
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 1)
-                                    .background(Theme.bgDark)
-                                    .clipShape(RoundedRectangle(cornerRadius: 3))
-                            }
-                            
-                            Text(formattedTimeRange)
-                                .font(.system(size: 8.5, design: .monospaced))
-                                .foregroundColor(Theme.textMuted)
-                        }
+                    if computedHeight >= 56 {
+                        Text(formattedTimeRange)
+                            .font(.system(size: 8, weight: .medium, design: .monospaced))
+                            .foregroundColor(Theme.textMuted)
+                            .lineLimit(1)
                     }
                 }
                 .padding(.horizontal, 5)

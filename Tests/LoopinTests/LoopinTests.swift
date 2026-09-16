@@ -70,5 +70,41 @@ final class LoopinTests: XCTestCase {
         XCTAssertNotNil(state.promptIntervalEnd)
         XCTAssertFalse(state.formattedCurrentPromptInterval.isEmpty)
     }
+    
+    @MainActor
+    func testOverlappingEntriesSideBySideLayout() {
+        let now = Date()
+        let cal = Calendar.current
+        let start = cal.date(bySettingHour: 10, minute: 0, second: 0, of: now)!
+        let end = cal.date(bySettingHour: 11, minute: 0, second: 0, of: now)!
+        
+        let entry1 = TimesheetEntry(
+            id: "e1",
+            kind: EntryKind.logged.rawValue,
+            startAt: start,
+            endAt: end,
+            rawText: "Task 1",
+            category: "Work",
+            productivity: "productive"
+        )
+        
+        let entry2 = TimesheetEntry(
+            id: "e2",
+            kind: EntryKind.logged.rawValue,
+            startAt: start,
+            endAt: end,
+            rawText: "Task 2",
+            category: "Meetings",
+            productivity: "productive"
+        )
+        
+        let dayColumn = DayColumnView(date: now, entries: [entry1, entry2])
+        let positioned = dayColumn.computePositionedEntries()
+        
+        XCTAssertEqual(positioned.count, 2)
+        XCTAssertEqual(positioned[0].totalCols, 2, "Overlapping entries must share 2 columns")
+        XCTAssertEqual(positioned[1].totalCols, 2, "Overlapping entries must share 2 columns")
+        XCTAssertNotEqual(positioned[0].colIndex, positioned[1].colIndex, "Overlapping entries must have different column indices")
+    }
 }
 
