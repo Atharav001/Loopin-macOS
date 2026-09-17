@@ -112,6 +112,7 @@ public struct SidebarView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 4)
                 
+                sidebarButton(for: .calendar)
                 sidebarButton(for: .weekCalendar)
                 sidebarButton(for: .rails)
                 sidebarButton(for: .analytics)

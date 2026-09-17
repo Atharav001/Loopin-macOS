@@ -111,22 +111,21 @@ fun MainScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Loopin",
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
-                            fontSize = 20.sp
+                            text = "LOOPIN",
+                            style = TypographyHierarchy.TitleLargeBoxy
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = AccentPurple.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp),
+                            color = AccentPurple.copy(alpha = 0.15f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, AccentPurple.copy(alpha = 0.4f)),
                             modifier = Modifier.padding(vertical = 2.dp)
                         ) {
                             Text(
-                                text = "Cross-Platform Sync",
+                                text = "OLED MINIMAL",
+                                style = TypographyHierarchy.SubheadBoxy,
                                 color = AccentPurple,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 10.sp,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -153,7 +152,8 @@ fun MainScreen(
             FloatingActionButton(
                 onClick = { showQuickLogDialog = true },
                 containerColor = AccentPurple,
-                contentColor = Color.White
+                contentColor = Color.White,
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Quick Log")
             }
@@ -170,19 +170,19 @@ fun MainScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(SurfaceDark)
-                    .padding(4.dp)
+                    .padding(3.dp)
             ) {
                 TabButton(
-                    title = "⚡ Actual Logged",
+                    title = "⚡ ACTUAL LOGGED",
                     isSelected = selectedTab == "logged",
                     modifier = Modifier.weight(1f)
                 ) {
                     selectedTab = "logged"
                 }
                 TabButton(
-                    title = "📅 Planned Rails",
+                    title = "📅 PLANNED RAILS",
                     isSelected = selectedTab == "planned",
                     modifier = Modifier.weight(1f)
                 ) {
@@ -190,13 +190,13 @@ fun MainScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Sync status summary pill
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(6.dp))
                     .background(SurfaceDark)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -205,26 +205,27 @@ fun MainScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(8.dp)
-                            .clip(RoundedCornerShape(4.dp))
+                            .size(7.dp)
+                            .clip(RoundedCornerShape(2.dp))
                             .background(ProductiveGreen)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Supabase & GCal Connected",
-                        fontSize = 12.sp,
+                        text = "SUPABASE & GCAL CONNECTED",
+                        style = TypographyHierarchy.SubheadBoxy,
+                        fontSize = 10.sp,
                         color = TextSecondary
                     )
                 }
                 Text(
-                    text = "${entries.size} blocks",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    text = "${entries.size} BLOCKS",
+                    style = TypographyHierarchy.SubheadBoxy,
+                    fontSize = 10.sp,
                     color = AccentPurple
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Entries List
             if (entries.isEmpty()) {
@@ -235,14 +236,15 @@ fun MainScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No ${selectedTab} blocks for today.\nTap + to create one or wait for hourly prompt.",
-                        color = TextSecondary,
-                        fontSize = 14.sp
+                        text = "NO ${selectedTab.uppercase()} BLOCKS FOR TODAY.\nTap + to create one or wait for hourly prompt.",
+                        style = TypographyHierarchy.BodySecondary,
+                        color = TextMuted,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     items(entries) { entry ->
@@ -274,17 +276,17 @@ fun TabButton(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(if (isSelected) AccentPurple else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = title,
+            style = TypographyHierarchy.SubheadBoxy,
             color = if (isSelected) Color.White else TextSecondary,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            fontSize = 13.sp
+            fontSize = 11.sp
         )
     }
 }
@@ -302,13 +304,14 @@ fun EntryCard(entry: TimesheetEntry) {
     }
 
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderDark),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
-                .padding(14.dp)
+                .padding(12.dp)
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -316,36 +319,36 @@ fun EntryCard(entry: TimesheetEntry) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = entry.rawText.ifEmpty { "(${entry.category})" },
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = TypographyHierarchy.TitleMediumBoxy,
                     color = TextPrimary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "$startStr - $endStr",
-                        fontSize = 12.sp,
+                        style = TypographyHierarchy.TimestampMono,
                         color = TextSecondary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "• ${entry.category}",
-                        fontSize = 12.sp,
-                        color = TextSecondary
+                        style = TypographyHierarchy.BodySecondary,
+                        color = TextMuted
                     )
                 }
             }
 
             Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = prodColor.copy(alpha = 0.2f)
+                shape = RoundedCornerShape(4.dp),
+                color = prodColor.copy(alpha = 0.15f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, prodColor.copy(alpha = 0.4f))
             ) {
                 Text(
-                    text = entry.productivity.replaceFirstChar { it.uppercase() },
+                    text = entry.productivity.uppercase(),
+                    style = TypographyHierarchy.SubheadBoxy,
                     color = prodColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                 )
             }
         }

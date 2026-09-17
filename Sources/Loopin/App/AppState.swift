@@ -3,7 +3,8 @@ import Combine
 
 // MARK: - NavigationTab
 public enum NavigationTab: String, CaseIterable, Identifiable, Sendable {
-    case weekCalendar = "Week Calendar"
+    case calendar = "Calendar"
+    case weekCalendar = "Week Planner"
     case rails = "Timesheet Rails"
     case analytics = "Analytics & Reports"
     case dictionary = "Dictionary & Rules"
@@ -15,7 +16,8 @@ public enum NavigationTab: String, CaseIterable, Identifiable, Sendable {
     
     public var iconName: String {
         switch self {
-        case .weekCalendar: return "calendar"
+        case .calendar: return "calendar"
+        case .weekCalendar: return "calendar.day.timeline.left"
         case .rails: return "timeline.selection"
         case .analytics: return "chart.bar.xaxis"
         case .dictionary: return "character.book.closed"
@@ -27,12 +29,13 @@ public enum NavigationTab: String, CaseIterable, Identifiable, Sendable {
     
     public var shortcutNumber: String {
         switch self {
-        case .weekCalendar: return "1"
-        case .rails: return "2"
-        case .analytics: return "3"
-        case .dictionary: return "4"
-        case .focusPrompts: return "5"
-        case .account: return "6"
+        case .calendar: return "1"
+        case .weekCalendar: return "2"
+        case .rails: return "3"
+        case .analytics: return "4"
+        case .dictionary: return "5"
+        case .focusPrompts: return "6"
+        case .account: return "7"
         case .settings: return ","
         }
     }
@@ -43,7 +46,7 @@ public enum NavigationTab: String, CaseIterable, Identifiable, Sendable {
 public final class AppState: ObservableObject {
     public static let shared = AppState()
     
-    @Published public var selectedTab: NavigationTab = .weekCalendar
+    @Published public var selectedTab: NavigationTab = .calendar
     @Published public var isPinnedOnTop: Bool = false
     
     // Multi-Theme Selector (Default: Clockify Dark)

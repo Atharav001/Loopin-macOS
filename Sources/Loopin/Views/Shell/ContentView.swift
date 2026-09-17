@@ -36,6 +36,8 @@ public struct ContentView: View {
                 // Active Screen Body driven by appState.selectedTab
                 ZStack {
                     switch appState.selectedTab {
+                    case .calendar:
+                        CalendarView()
                     case .weekCalendar:
                         WeekCalendarView()
                     case .rails:
