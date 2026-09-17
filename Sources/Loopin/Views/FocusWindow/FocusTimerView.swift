@@ -167,6 +167,31 @@ public struct FocusTimerView: View {
             
             Spacer()
             
+            // Sticky To-Do List Button (Side-by-side productivity)
+            Button(action: {
+                StickyTodoWindowController.shared.toggle()
+            }) {
+                HStack(spacing: 3) {
+                    Image(systemName: "checklist")
+                        .font(.system(size: 9, weight: .bold))
+                    if !isSuperCompact {
+                        Text("Tasks")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                }
+                .foregroundColor(Theme.textSecondary)
+                .padding(.horizontal, isSuperCompact ? 6 : 8)
+                .padding(.vertical, 3.5)
+                .background(Color.white.opacity(0.06))
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Sticky To-Do List Window")
+            
             // Always on Top Pin Button
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.2)) {

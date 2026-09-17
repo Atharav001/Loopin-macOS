@@ -501,25 +501,6 @@ public struct AccountView: View {
                 
                 Spacer()
                 
-                // Info Button ("i" button requested by user for setup guide)
-                Button(action: {
-                    showSetupGuideSheet = true
-                }) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 12))
-                        Text("Setup Guide")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundColor(Theme.accentLight)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4.5)
-                    .background(Theme.accent.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-                .buttonStyle(.plain)
-                .help("View Google Cloud Console OAuth setup instructions")
-                
                 // Status Pill
                 HStack(spacing: 5) {
                     Circle()

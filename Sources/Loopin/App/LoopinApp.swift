@@ -54,8 +54,26 @@ public struct LoopinApp: App {
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
+            CommandMenu("Focus & Tasks") {
+                Button("Open Pomodoro Timer") {
+                    FocusTimerWindowController.shared.show()
+                }
+                .keyboardShortcut("t", modifiers: [.command])
+                
+                Button("Open Quick To-Do Sticky Note") {
+                    StickyTodoWindowController.shared.show()
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+            }
             CommandGroup(replacing: .help) {
-                Button("Logtrackin Help") {
+                Button("Logtrackin Tutorial & Guide") {
+                    TutorialWindowController.shared.show()
+                }
+                .keyboardShortcut("?", modifiers: [.command])
+                
+                Divider()
+                
+                Button("GitHub Documentation") {
                     if let url = URL(string: "https://github.com/Atharav001/Logtrackin") {
                         NSWorkspace.shared.open(url)
                     }

@@ -35,11 +35,19 @@ public final class MenuBarManager: NSObject, @unchecked Sendable {
         focusTimerItem.target = self
         menu.addItem(focusTimerItem)
         
+        let stickyTodoItem = NSMenuItem(title: "Open Quick To-Do List", action: #selector(openStickyTodoWindow), keyEquivalent: "d")
+        stickyTodoItem.target = self
+        menu.addItem(stickyTodoItem)
+        
         let pomodoroItem = NSMenuItem(title: "Toggle Background Focus", action: #selector(togglePomodoro), keyEquivalent: "p")
         pomodoroItem.target = self
         menu.addItem(pomodoroItem)
         
         menu.addItem(NSMenuItem.separator())
+        
+        let tutorialItem = NSMenuItem(title: "Logtrackin Tutorial & Guide...", action: #selector(openTutorialWindow), keyEquivalent: "")
+        tutorialItem.target = self
+        menu.addItem(tutorialItem)
         
         let quitItem = NSMenuItem(title: "Quit Logtrackin", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
@@ -56,6 +64,10 @@ public final class MenuBarManager: NSObject, @unchecked Sendable {
         FocusTimerWindowController.shared.show()
     }
     
+    @objc private func openStickyTodoWindow() {
+        StickyTodoWindowController.shared.show()
+    }
+    
     @objc private func showMainWindow() {
         NSApp.activate(ignoringOtherApps: true)
         if let window = NSApp.windows.first(where: { $0.title == "Logtrackin" }) {
@@ -65,6 +77,10 @@ public final class MenuBarManager: NSObject, @unchecked Sendable {
     
     @objc private func togglePomodoro() {
         AppState.shared.isPomodoroRunning.toggle()
+    }
+    
+    @objc private func openTutorialWindow() {
+        TutorialWindowController.shared.show()
     }
     
     @objc private func quitApp() {
