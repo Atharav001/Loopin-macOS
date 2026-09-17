@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 public struct MonthCalendarGrid: View {
     @ObservedObject var appState: AppState = .shared
@@ -7,6 +8,7 @@ public struct MonthCalendarGrid: View {
     var monthDate: Date
     var onSelectEvent: (CalendarEvent) -> Void
     var onSelectRange: (Date, Date) -> Void
+    var onScrollMonth: ((Int) -> Void)?
     
     // Drag selection state
     @State private var dragStartDay: Date?
@@ -16,11 +18,13 @@ public struct MonthCalendarGrid: View {
     public init(
         monthDate: Date,
         onSelectEvent: @escaping (CalendarEvent) -> Void,
-        onSelectRange: @escaping (Date, Date) -> Void
+        onSelectRange: @escaping (Date, Date) -> Void,
+        onScrollMonth: ((Int) -> Void)? = nil
     ) {
         self.monthDate = monthDate
         self.onSelectEvent = onSelectEvent
         self.onSelectRange = onSelectRange
+        self.onScrollMonth = onScrollMonth
     }
     
     private var calendar: Calendar {
@@ -37,7 +41,7 @@ public struct MonthCalendarGrid: View {
         }
     }
     
-    // Dynamic month grid metrics (precisely calculates 5 or 6 full weeks without truncating days)
+    // Dynamic month grid metrics (completes week with preceding & succeeding days)
     private var gridMetrics: (days: [Date], rowCount: Int) {
         let cal = calendar
         guard let monthInterval = cal.dateInterval(of: .month, for: monthDate) else {
@@ -68,81 +72,88 @@ public struct MonthCalendarGrid: View {
             let totalWidth = geo.size.width
             let totalHeight = geo.size.height
             let colWidth = floor(totalWidth / 7.0)
-            let headerHeight: CGFloat = 32
+            let headerHeight: CGFloat = 30
             
             let metrics = gridMetrics
             let days = metrics.days
             let rowCount = metrics.rowCount
             let rowHeight = floor((totalHeight - headerHeight) / CGFloat(rowCount))
             
-            VStack(spacing: 0) {
-                // 1. Weekday Column Headers
-                HStack(spacing: 0) {
-                    ForEach(0..<7, id: \.self) { col in
-                        Text(weekdaySymbols[col])
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Theme.textMuted)
-                            .tracking(0.6)
-                            .frame(width: colWidth, height: headerHeight)
-                    }
+            ZStack {
+                // Trackpad / Mouse Scroll Listener for Month Flipping
+                if let onScrollMonth = onScrollMonth {
+                    MonthScrollWheelOverlay(onScroll: onScrollMonth)
                 }
-                .background(Theme.bgDark.opacity(0.5))
-                .overlay(
-                    Rectangle()
-                        .fill(Theme.border)
-                        .frame(height: 1),
-                    alignment: .bottom
-                )
-                
-                // 2. Month Grid Rows
-                let activeYear = calendar.component(.year, from: monthDate)
-                let visibleEvents = calendarManager.allVisibleEvents(forYear: activeYear)
                 
                 VStack(spacing: 0) {
-                    ForEach(0..<rowCount, id: \.self) { row in
-                        HStack(spacing: 0) {
-                            ForEach(0..<7, id: \.self) { col in
-                                let index = row * 7 + col
-                                if index < days.count {
-                                    let day = days[index]
-                                    let isSelectedRange = isDayInDragRange(day)
-                                    
-                                    MonthDayCell(
-                                        date: day,
-                                        displayedMonth: monthDate,
-                                        width: colWidth,
-                                        height: rowHeight,
-                                        events: eventsForDay(day, from: visibleEvents),
-                                        isSelectedRange: isSelectedRange,
-                                        onSelectEvent: onSelectEvent,
-                                        onDayTapped: {
-                                            onSelectRange(day, day)
-                                        }
-                                    )
-                                    .frame(width: colWidth, height: rowHeight)
-                                    .contentShape(Rectangle())
-                                    .gesture(
-                                        DragGesture(minimumDistance: 4, coordinateSpace: .named("MonthGridSpace"))
-                                            .onChanged { value in
-                                                handleDragChanged(
-                                                    value: value,
-                                                    colWidth: colWidth,
-                                                    rowHeight: rowHeight,
-                                                    headerHeight: headerHeight,
-                                                    rowCount: rowCount,
-                                                    days: days
-                                                )
+                    // 1. Weekday Column Headers
+                    HStack(spacing: 0) {
+                        ForEach(0..<7, id: \.self) { col in
+                            Text(weekdaySymbols[col])
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(Theme.textMuted)
+                                .tracking(0.6)
+                                .frame(width: colWidth, height: headerHeight)
+                        }
+                    }
+                    .background(Theme.bgDark.opacity(0.4))
+                    .overlay(
+                        Rectangle()
+                            .fill(Theme.border)
+                            .frame(height: 1),
+                        alignment: .bottom
+                    )
+                    
+                    // 2. Month Grid Rows
+                    let activeYear = calendar.component(.year, from: monthDate)
+                    let visibleEvents = calendarManager.allVisibleEvents(forYear: activeYear)
+                    
+                    VStack(spacing: 0) {
+                        ForEach(0..<rowCount, id: \.self) { row in
+                            HStack(spacing: 0) {
+                                ForEach(0..<7, id: \.self) { col in
+                                    let index = row * 7 + col
+                                    if index < days.count {
+                                        let day = days[index]
+                                        let isSelectedRange = isDayInDragRange(day)
+                                        
+                                        MonthDayCell(
+                                            date: day,
+                                            displayedMonth: monthDate,
+                                            width: colWidth,
+                                            height: rowHeight,
+                                            events: eventsForDay(day, from: visibleEvents),
+                                            isSelectedRange: isSelectedRange,
+                                            onSelectEvent: onSelectEvent,
+                                            onDayTapped: {
+                                                onSelectRange(day, day)
                                             }
-                                            .onEnded { _ in
-                                                handleDragEnded()
-                                            }
-                                    )
+                                        )
+                                        .frame(width: colWidth, height: rowHeight)
+                                        .contentShape(Rectangle())
+                                        .gesture(
+                                            DragGesture(minimumDistance: 4, coordinateSpace: .named("MonthGridSpace"))
+                                                .onChanged { value in
+                                                    handleDragChanged(
+                                                        value: value,
+                                                        colWidth: colWidth,
+                                                        rowHeight: rowHeight,
+                                                        headerHeight: headerHeight,
+                                                        rowCount: rowCount,
+                                                        days: days
+                                                    )
+                                                }
+                                                .onEnded { _ in
+                                                    handleDragEnded()
+                                                }
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        
-                        if row < rowCount - 1 {
-                            Divider().background(Theme.border)
+                            
+                            if row < rowCount - 1 {
+                                Divider().background(Theme.border)
+                            }
                         }
                     }
                 }
@@ -235,17 +246,17 @@ public struct MonthDayCell: View {
     
     public var body: some View {
         ZStack(alignment: .topLeading) {
-            // Background Canvas
+            // Background Canvas (Dimmer if outside of active month)
             Rectangle()
                 .fill(
                     isSelectedRange
                         ? Theme.accent.opacity(0.18)
-                        : (isHovered ? Theme.bgSubtle : Theme.bgDeep)
+                        : (isHovered ? Theme.bgSubtle : (isCurrentMonth ? Theme.bgDeep : Theme.bgDeep.opacity(0.55)))
                 )
             
             // Vertical Right Border
             Rectangle()
-                .fill(Theme.border)
+                .fill(isCurrentMonth ? Theme.border : Theme.border.opacity(0.5))
                 .frame(width: 1)
                 .frame(maxWidth: .infinity, alignment: .trailing)
             
@@ -258,12 +269,17 @@ public struct MonthDayCell: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
-                            .background(Theme.accent)
+                            .background(Color(red: 235/255, green: 59/255, blue: 50/255)) // Red badge matching screenshot
                             .clipShape(Capsule())
                     } else {
                         Text(dayLabel)
-                            .font(.system(size: 11, weight: dayNumber == 1 ? .bold : .medium))
-                            .foregroundColor(isCurrentMonth ? Theme.textPrimary : Theme.textMuted.opacity(0.35))
+                            .font(.system(size: 11, weight: dayNumber == 1 ? .bold : (isCurrentMonth ? .semibold : .regular)))
+                            // Faded color for days of preceding and succeeding months!
+                            .foregroundColor(
+                                isCurrentMonth
+                                    ? Theme.textPrimary
+                                    : Theme.textMuted.opacity(0.35)
+                            )
                             .padding(.leading, 6)
                             .padding(.top, 4)
                     }
@@ -279,6 +295,7 @@ public struct MonthDayCell: View {
                         EventPillView(
                             event: event,
                             date: date,
+                            isDimmed: !isCurrentMonth,
                             onTap: { onSelectEvent(event) }
                         )
                     }
@@ -286,7 +303,7 @@ public struct MonthDayCell: View {
                     if events.count > 3 {
                         Text("+\(events.count - 3) more")
                             .font(.system(size: 9.5, weight: .semibold))
-                            .foregroundColor(Theme.textMuted)
+                            .foregroundColor(isCurrentMonth ? Theme.textMuted : Theme.textMuted.opacity(0.35))
                             .padding(.leading, 6)
                             .padding(.top, 1)
                     }
@@ -308,6 +325,7 @@ public struct MonthDayCell: View {
 public struct EventPillView: View {
     var event: CalendarEvent
     var date: Date
+    var isDimmed: Bool = false
     var onTap: () -> Void
     
     private var cal: Calendar { Calendar.current }
@@ -323,19 +341,19 @@ public struct EventPillView: View {
                         .font(.system(size: 10, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .foregroundColor(Color.white)
+                        .foregroundColor(Color.white.opacity(isDimmed ? 0.6 : 1.0))
                 } else {
                     Text(event.title)
                         .font(.system(size: 10, weight: .medium))
                         .lineLimit(1)
-                        .opacity(0.85)
+                        .opacity(isDimmed ? 0.45 : 0.85)
                         .foregroundColor(Color.white)
                 }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 6)
             .frame(height: 19)
-            .background(event.color)
+            .background(event.color.opacity(isDimmed ? 0.45 : 1.0))
             .clipShape(
                 RoundedCornerShape(
                     topLeft: isStart || !isMultiDay ? 4 : 0,
@@ -344,10 +362,48 @@ public struct EventPillView: View {
                     topRight: isEnd || !isMultiDay ? 4 : 0
                 )
             )
-            .shadow(color: Color.black.opacity(0.1), radius: 1, y: 0.5)
+            .shadow(color: Color.black.opacity(isDimmed ? 0.05 : 0.1), radius: 1, y: 0.5)
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 2)
+    }
+}
+
+// MARK: - MonthScrollWheelOverlay
+struct MonthScrollWheelOverlay: NSViewRepresentable {
+    var onScroll: (Int) -> Void
+    
+    func makeNSView(context: Context) -> ScrollWheelNSView {
+        let v = ScrollWheelNSView()
+        v.onScroll = onScroll
+        return v
+    }
+    
+    func updateNSView(_ nsView: ScrollWheelNSView, context: Context) {
+        nsView.onScroll = onScroll
+    }
+    
+    class ScrollWheelNSView: NSView {
+        var onScroll: ((Int) -> Void)?
+        private var lastScrollTime: TimeInterval = 0
+        
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            // Transparent to clicks so day cells receive all click & drag gestures
+            return nil
+        }
+        
+        override func scrollWheel(with event: NSEvent) {
+            let now = ProcessInfo.processInfo.systemUptime
+            guard now - lastScrollTime > 0.25 else { return }
+            
+            if event.scrollingDeltaY < -6 || event.deltaY < -0.8 {
+                lastScrollTime = now
+                onScroll?(1)
+            } else if event.scrollingDeltaY > 6 || event.deltaY > 0.8 {
+                lastScrollTime = now
+                onScroll?(-1)
+            }
+        }
     }
 }
 

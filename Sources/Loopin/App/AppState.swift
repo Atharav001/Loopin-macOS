@@ -117,7 +117,7 @@ public final class AppState: ObservableObject {
     @Published public var googleUserName: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleUserName") ?? "ATHARAV HARI" {
         didSet { UserDefaults.standard.set(googleUserName, forKey: "Logtrackin_GoogleUserName") }
     }
-    @Published public var googleUserEmail: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleUserEmail") ?? "atharavh82@gmail.com" {
+    @Published public var googleUserEmail: String = UserDefaults.standard.string(forKey: "Logtrackin_GoogleUserEmail") ?? "atharavnarang05@gmail.com" {
         didSet { UserDefaults.standard.set(googleUserEmail, forKey: "Logtrackin_GoogleUserEmail") }
     }
     @Published public var googleCalendarSyncEnabled: Bool = UserDefaults.standard.object(forKey: "Logtrackin_GoogleSyncEnabled") as? Bool ?? true {

@@ -41,7 +41,13 @@ public final class CalendarManager: ObservableObject {
     private func loadEvents() {
         if let data = UserDefaults.standard.data(forKey: customEventsStorageKey),
            let decoded = try? JSONDecoder().decode([CalendarEvent].self, from: data) {
-            customEvents = decoded
+            // Filter out any legacy test dummy events
+            customEvents = decoded.filter {
+                $0.title != "Product Roadmap Review" &&
+                $0.title != "Sample Event" &&
+                !$0.title.lowercased().contains("test event")
+            }
+            saveCustomEvents()
         } else {
             customEvents = []
         }
@@ -57,6 +63,7 @@ public final class CalendarManager: ObservableObject {
     public func addEvent(_ event: CalendarEvent) {
         customEvents.append(event)
         saveCustomEvents()
+        objectWillChange.send()
         
         Task {
             await pushEventToGoogleCalendarIfNeeded(event)
@@ -67,6 +74,7 @@ public final class CalendarManager: ObservableObject {
         if let index = customEvents.firstIndex(where: { $0.id == event.id }) {
             customEvents[index] = event
             saveCustomEvents()
+            objectWillChange.send()
             
             Task {
                 await pushEventToGoogleCalendarIfNeeded(event)
@@ -78,6 +86,7 @@ public final class CalendarManager: ObservableObject {
         customEvents.removeAll { $0.id == id }
         googleEvents.removeAll { $0.id == id }
         saveCustomEvents()
+        objectWillChange.send()
     }
     
     public func toggleCalendarVisibility(id: String) {
@@ -86,6 +95,7 @@ public final class CalendarManager: ObservableObject {
         } else {
             visibleCalendarIds.insert(id)
         }
+        objectWillChange.send()
     }
     
     public func isCalendarVisible(id: String) -> Bool {
@@ -104,41 +114,41 @@ public final class CalendarManager: ObservableObject {
             result.append(contentsOf: holidays + prevHolidays + nextHolidays)
         }
         
-        // 2. Loopin Logged (Actual) Entries - Logged on the app itself
+        // 2. Loopin Log Sheet Entries (Actual entries logged on the app itself)
         if visibleCalendarIds.contains("logged") {
             let entries = DatabaseManager.shared.fetchAllEntries().filter { $0.kind == EntryKind.logged.rawValue }
             for entry in entries {
                 let colorHex = entry.productivity == "wasteful" ? "#EF4444" : "#10B981"
                 result.append(CalendarEvent(
                     id: UUID(uuidString: entry.id) ?? UUID(),
-                    title: entry.rawText.isEmpty ? (entry.category ?? "Logged Entry") : entry.rawText,
+                    title: entry.rawText.isEmpty ? (entry.category ?? "Log Sheet") : entry.rawText,
                     startDate: entry.startAt,
                     endDate: entry.endAt,
                     isAllDay: false,
                     calendarId: "logged",
                     colorHex: colorHex,
-                    notes: "Actual Log • \(entry.productivity?.capitalized ?? "Productive")"
+                    notes: "Log Sheet • \(entry.productivity?.capitalized ?? "Productive")"
                 ))
             }
         }
         
-        // 3. Loopin Planned Rails Entries
+        // 3. Loopin Pre-planned Entries (Planned blocks)
         if visibleCalendarIds.contains("planned") {
             let entries = DatabaseManager.shared.fetchAllEntries().filter { $0.kind == EntryKind.planned.rawValue }
             for entry in entries {
                 result.append(CalendarEvent(
                     id: UUID(uuidString: entry.id) ?? UUID(),
-                    title: entry.rawText.isEmpty ? (entry.category ?? "Planned Task") : entry.rawText,
+                    title: entry.rawText.isEmpty ? (entry.category ?? "Pre-planned") : entry.rawText,
                     startDate: entry.startAt,
                     endDate: entry.endAt,
                     isAllDay: false,
                     calendarId: "planned",
                     colorHex: "#8B5CF6",
-                    notes: "Planned Block"
+                    notes: "Pre-planned Block"
                 ))
             }
             
-            // Custom planned events created directly in Calendar
+            // Custom pre-planned events created directly in Calendar
             let customPlanned = customEvents.filter { $0.calendarId == "planned" || $0.calendarId == "primary" }
             result.append(contentsOf: customPlanned)
         }

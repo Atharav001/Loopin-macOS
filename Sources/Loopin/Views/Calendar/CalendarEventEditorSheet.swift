@@ -14,7 +14,7 @@ public struct CalendarEventEditorSheet: View {
     @State private var startDate: Date = Date()
     @State private var endDate: Date = Date()
     @State private var isAllDay: Bool = true
-    @State private var selectedCalendarId: String = "primary"
+    @State private var selectedCalendarId: String = "planned"
     @State private var selectedColorHex: String = "#0288EB"
     @State private var location: String = ""
     @State private var notes: String = ""
@@ -141,10 +141,9 @@ public struct CalendarEventEditorSheet: View {
                                 .tracking(0.6)
                             
                             Picker("", selection: $selectedCalendarId) {
-                                Text(appState.isSignedInWithGoogle ? appState.googleUserName : "Atharav Narang").tag("primary")
-                                Text("Tasks / Loopin").tag("tasks")
-                                Text("Birthdays").tag("birthdays")
-                                Text("Custom").tag("custom")
+                                Text("Pre-planned").tag("planned")
+                                Text("Log Sheet").tag("logged")
+                                Text(appState.googleUserEmail.isEmpty ? "atharavnarang05@gmail.com" : appState.googleUserEmail).tag("google")
                             }
                             .pickerStyle(.menu)
                             .labelsHidden()

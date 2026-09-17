@@ -65,6 +65,9 @@ public struct CalendarView: View {
                                 draftRangeStart = start
                                 draftRangeEnd = end
                                 isShowingEditor = true
+                            },
+                            onScrollMonth: { delta in
+                                navigateDate(by: delta)
                             }
                         )
                     case .year:

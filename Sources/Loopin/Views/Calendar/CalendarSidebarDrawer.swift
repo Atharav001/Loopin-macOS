@@ -3,13 +3,11 @@ import SwiftUI
 public struct CalendarSidebarDrawer: View {
     @ObservedObject var appState: AppState = .shared
     @ObservedObject var calendarManager: CalendarManager = .shared
-    @ObservedObject var googleAuth: GoogleAuthService = .shared
     
     @Binding var selectedDate: Date
     var onCreateEvent: () -> Void
     
     @State private var miniCalendarMonth: Date = Date()
-    @State private var isCalendarsExpanded: Bool = true
     
     private let daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"]
     
@@ -23,16 +21,16 @@ public struct CalendarSidebarDrawer: View {
     }
     
     public var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // 1. "+ Create" Button (Google Calendar Style)
+        VStack(alignment: .leading, spacing: 16) {
+            // 1. "+ Create" Quick Action Button
             Button(action: onCreateEvent) {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundColor(Theme.accent)
                     
-                    Text("Create Event")
-                        .font(.system(size: 13, weight: .semibold))
+                    Text("New Event")
+                        .font(.system(size: 12.5, weight: .semibold))
                         .foregroundColor(Theme.textPrimary)
                     
                     Spacer()
@@ -41,91 +39,144 @@ public struct CalendarSidebarDrawer: View {
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
                         .foregroundColor(Theme.textMuted)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
                 .background(Theme.bgCard)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .shadow(color: Color.black.opacity(0.12), radius: 4, x: 0, y: 2)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14)
+                    RoundedRectangle(cornerRadius: 10)
                         .stroke(Theme.border, lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 14)
-            .padding(.top, 14)
+            .padding(.top, 12)
             
-            // 2. Mini Calendar Date Picker
+            // 2. Calendar Groups (Styled like Apple Calendar / macOS Calendar)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    // Group 1: Google
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Google")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Theme.textMuted)
+                            .padding(.horizontal, 14)
+                        
+                        VStack(spacing: 2) {
+                            // User's Google Email ID
+                            sidebarToggleItem(
+                                id: "google",
+                                title: appState.googleUserEmail.isEmpty ? "atharavnarang05@gmail.com" : appState.googleUserEmail,
+                                color: Color(red: 79/255, green: 170/255, blue: 189/255) // Cyan/Teal matching screenshot
+                            )
+                            
+                            // Holidays in India
+                            sidebarToggleItem(
+                                id: "holidays_india",
+                                title: "Holidays in India",
+                                color: Color(red: 52/255, green: 168/255, blue: 83/255) // Emerald Green (#34A853)
+                            )
+                        }
+                    }
+                    
+                    // Group 2: Loopin
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Loopin")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Theme.textMuted)
+                            .padding(.horizontal, 14)
+                        
+                        VStack(spacing: 2) {
+                            // Log Sheet (Actual logged entries)
+                            sidebarToggleItem(
+                                id: "logged",
+                                title: "Log Sheet",
+                                color: Color(red: 16/255, green: 185/255, blue: 129/255) // Emerald
+                            )
+                            
+                            // Pre-planned (Planned rails)
+                            sidebarToggleItem(
+                                id: "planned",
+                                title: "Pre-planned",
+                                color: Color(red: 139/255, green: 92/255, blue: 246/255) // Purple
+                            )
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: 200)
+            
+            Divider()
+                .background(Theme.border)
+                .padding(.horizontal, 14)
+            
+            // 3. Mini Month Calendar (Matching macOS Calendar style with faded boundary days)
             VStack(alignment: .leading, spacing: 8) {
-                // Mini Month Header with Navigation
+                // Month Header (< Month Year >)
                 HStack {
+                    Button(action: { changeMiniMonth(by: -1) }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(Theme.textSecondary)
+                            .frame(width: 20, height: 20)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                    
                     Text(miniCalendarTitle)
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(Theme.textPrimary)
                     
                     Spacer()
                     
-                    HStack(spacing: 4) {
-                        Button(action: {
-                            changeMiniMonth(by: -1)
-                        }) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(Theme.textSecondary)
-                                .frame(width: 20, height: 20)
-                                .background(Theme.bgSubtle)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                        .buttonStyle(.plain)
-                        
-                        Button(action: {
-                            changeMiniMonth(by: 1)
-                        }) {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(Theme.textSecondary)
-                                .frame(width: 20, height: 20)
-                                .background(Theme.bgSubtle)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                        .buttonStyle(.plain)
+                    Button(action: { changeMiniMonth(by: 1) }) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(Theme.textSecondary)
+                            .frame(width: 20, height: 20)
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 6)
                 
                 // Days of week header (S M T W T F S)
                 HStack(spacing: 0) {
                     ForEach(0..<7, id: \.self) { idx in
                         Text(daysOfWeek[idx])
-                            .font(.system(size: 9.5, weight: .semibold))
+                            .font(.system(size: 9.5, weight: .bold))
                             .foregroundColor(Theme.textMuted)
                             .frame(maxWidth: .infinity)
                     }
                 }
                 
-                // Mini Calendar Days Grid
+                // Mini Calendar 6-Week Days Grid (with faded boundary days)
                 let days = generateDaysInMiniMonth(for: miniCalendarMonth)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 4) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 3) {
                     ForEach(days, id: \.self) { day in
                         let isSelected = Calendar.current.isDate(day, inSameDayAs: selectedDate)
                         let isToday = Calendar.current.isDateInToday(day)
                         let isCurrentMonth = Calendar.current.isDate(day, equalTo: miniCalendarMonth, toGranularity: .month)
+                        let dayNum = Calendar.current.component(.day, from: day)
                         
                         Button(action: {
                             selectedDate = day
                         }) {
-                            Text("\(Calendar.current.component(.day, from: day))")
-                                .font(.system(size: 10.5, weight: isSelected || isToday ? .bold : .regular))
+                            Text("\(dayNum)")
+                                .font(.system(size: 10, weight: isSelected || isToday ? .bold : (isCurrentMonth ? .semibold : .regular)))
                                 .foregroundColor(
-                                    isSelected ? Color.white : (isToday ? Theme.accent : (isCurrentMonth ? Theme.textPrimary : Theme.textMuted.opacity(0.3)))
+                                    isSelected ? Color.white :
+                                    (isToday ? Color.white :
+                                    (isCurrentMonth ? Theme.textPrimary : Theme.textMuted.opacity(0.35)))
                                 )
-                                .frame(width: 22, height: 22)
+                                .frame(width: 20, height: 20)
                                 .background(
                                     ZStack {
-                                        if isSelected {
+                                        if isToday {
+                                            // Red circle highlight for today as seen in user's Apple Calendar screenshot!
+                                            Circle().fill(Color(red: 235/255, green: 59/255, blue: 50/255))
+                                        } else if isSelected {
                                             Circle().fill(Theme.accent)
-                                        } else if isToday {
-                                            Circle().stroke(Theme.accent, lineWidth: 1.5)
                                         }
                                     }
                                 )
@@ -138,94 +189,9 @@ public struct CalendarSidebarDrawer: View {
             .background(Theme.bgSubtle)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .padding(.horizontal, 14)
-            
-            Divider()
-                .background(Theme.border)
-                .padding(.horizontal, 14)
-            
-            // 3. Consolidated Real Calendars Section (Toggleable to plan simultaneously)
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("MY CALENDARS")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(Theme.textMuted)
-                        .tracking(0.8)
-                    
-                    Spacer()
-                    
-                    Text("\(calendarManager.visibleCalendarIds.count)/4 active")
-                        .font(.system(size: 9.5, weight: .medium))
-                        .foregroundColor(Theme.textMuted)
-                }
-                .padding(.horizontal, 16)
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    // 1. Loopin Actual Logged
-                    calendarToggleRow(
-                        id: "logged",
-                        title: "Actual Logged",
-                        subtitle: "Tracked hours in Loopin",
-                        color: Theme.productive,
-                        icon: "bolt.fill"
-                    )
-                    
-                    // 2. Loopin Planned Rails
-                    calendarToggleRow(
-                        id: "planned",
-                        title: "Planned Blocks",
-                        subtitle: "Planned rails & tasks",
-                        color: Color(hex: "#8B5CF6"),
-                        icon: "calendar.badge.clock"
-                    )
-                    
-                    // 3. Google Calendar
-                    calendarToggleRow(
-                        id: "google",
-                        title: appState.isSignedInWithGoogle ? "Google (\(appState.googleUserName))" : "Google Calendar",
-                        subtitle: appState.isSignedInWithGoogle ? "Synced with account" : "Click to connect",
-                        color: Theme.accent,
-                        icon: "globe"
-                    )
-                    
-                    // 4. Holidays in India
-                    calendarToggleRow(
-                        id: "holidays_india",
-                        title: "Holidays in India",
-                        subtitle: "National & cultural festivals",
-                        color: Color(hex: "#34A853"),
-                        icon: "flag.fill"
-                    )
-                }
-                .padding(.horizontal, 14)
-            }
-            
-            Spacer()
-            
-            // 4. Bottom Sync Status Indicator
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(appState.isSignedInWithGoogle ? Theme.productive : Theme.accent)
-                    .frame(width: 7, height: 7)
-                
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(appState.isSignedInWithGoogle ? "Google Connected" : "Local Sync Mode")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(Theme.textPrimary)
-                    
-                    Text(calendarManager.syncStatusMessage)
-                        .font(.system(size: 9))
-                        .foregroundColor(Theme.textMuted)
-                        .lineLimit(1)
-                }
-                
-                Spacer()
-            }
-            .padding(10)
-            .background(Theme.bgSubtle)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .padding(14)
+            .padding(.bottom, 12)
         }
-        .frame(width: 230)
+        .frame(width: 210)
         .background(Theme.bgDark)
         .overlay(
             Rectangle()
@@ -240,54 +206,47 @@ public struct CalendarSidebarDrawer: View {
         }
     }
     
-    private func calendarToggleRow(
+    // MARK: - Toggle Item (Can be checked/unchecked repeatedly)
+    private func sidebarToggleItem(
         id: String,
         title: String,
-        subtitle: String,
-        color: Color,
-        icon: String
+        color: Color
     ) -> some View {
         let isChecked = calendarManager.isCalendarVisible(id: id)
         
         return Button(action: {
             calendarManager.toggleCalendarVisibility(id: id)
         }) {
-            HStack(spacing: 9) {
-                // Checkbox
+            HStack(spacing: 8) {
+                // Square check box matching Apple Calendar screenshot
                 ZStack {
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 3.5)
                         .fill(isChecked ? color : Color.clear)
-                        .frame(width: 16, height: 16)
+                        .frame(width: 14, height: 14)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 4)
+                            RoundedRectangle(cornerRadius: 3.5)
                                 .stroke(color, lineWidth: 1.5)
                         )
                     
                     if isChecked {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 9.5, weight: .bold))
+                            .font(.system(size: 8.5, weight: .bold))
                             .foregroundColor(.white)
                     }
                 }
                 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title)
-                        .font(.system(size: 11.5, weight: isChecked ? .semibold : .medium))
-                        .foregroundColor(isChecked ? Theme.textPrimary : Theme.textSecondary)
-                        .lineLimit(1)
-                    
-                    Text(subtitle)
-                        .font(.system(size: 9))
-                        .foregroundColor(Theme.textMuted)
-                        .lineLimit(1)
-                }
+                Text(title)
+                    .font(.system(size: 11.5, weight: isChecked ? .medium : .regular))
+                    .foregroundColor(isChecked ? Theme.textPrimary : Theme.textSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                 
                 Spacer()
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(isChecked ? color.opacity(0.08) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4.5)
+            .background(Color.clear)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -308,6 +267,7 @@ public struct CalendarSidebarDrawer: View {
         }
     }
     
+    // Generate full 6-week (42 days) view so boundary days complete the week perfectly
     private func generateDaysInMiniMonth(for date: Date) -> [Date] {
         let cal = Calendar.current
         guard let monthInterval = cal.dateInterval(of: .month, for: date) else { return [] }
@@ -317,6 +277,6 @@ public struct CalendarSidebarDrawer: View {
         let daysToPrepend = weekday - 1
         
         let firstCalendarDay = cal.date(byAdding: .day, value: -daysToPrepend, to: startOfMonth) ?? startOfMonth
-        return (0..<35).compactMap { cal.date(byAdding: .day, value: $0, to: firstCalendarDay) }
+        return (0..<42).compactMap { cal.date(byAdding: .day, value: $0, to: firstCalendarDay) }
     }
 }
