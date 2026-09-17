@@ -19,7 +19,7 @@ public struct SidebarView: View {
     }
     
     private var sidebarWidth: CGFloat {
-        appState.isSidebarCollapsed ? 60 : 210
+        appState.isSidebarCollapsed ? 60 : 230
     }
     
     public var body: some View {
@@ -44,27 +44,32 @@ public struct SidebarView: View {
     // MARK: - Expanded Sidebar Body
     private var expandedSidebarBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 1. Top Header Area (Traffic light offset + Logo + Collapse Button)
+            // 1. Top Header Area (Traffic light offset + Logo + Full Name + Collapse Button)
             ZStack(alignment: .leading) {
                 WindowDragArea()
                 
                 HStack(spacing: 8) {
                     Image(systemName: "timer")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(Theme.accentLight)
+                        .frame(width: 20)
                     
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Logtrackin")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundColor(Theme.textPrimary)
                             .tracking(0.3)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                         
                         Text("Workspace")
                             .font(.system(size: 9.5, weight: .medium))
                             .foregroundColor(Theme.textMuted)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                     
-                    Spacer()
+                    Spacer(minLength: 8)
                     
                     // Collapse button at top
                     Button(action: {
@@ -73,9 +78,9 @@ public struct SidebarView: View {
                         }
                     }) {
                         Image(systemName: "sidebar.leading")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(Theme.textSecondary)
-                            .frame(width: 26, height: 26)
+                            .frame(width: 24, height: 24)
                             .background(Theme.bgSubtle)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                             .overlay(
@@ -86,8 +91,8 @@ public struct SidebarView: View {
                     .buttonStyle(.plain)
                     .help("Collapse Sidebar")
                 }
-                .padding(.leading, 78) // Offset for macOS traffic lights
-                .padding(.trailing, 12)
+                .padding(.leading, 70) // Exact clearance for macOS traffic lights
+                .padding(.trailing, 10)
             }
             .frame(height: 52)
             
