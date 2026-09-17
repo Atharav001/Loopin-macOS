@@ -49,9 +49,9 @@ public struct SidebarView: View {
                 WindowDragArea()
                 
                 HStack(spacing: 8) {
-                    Image(systemName: "timer.circle.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(Theme.accent)
+                    Image(systemName: "timer")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(Theme.accentLight)
                     
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Logtrackin")
@@ -285,10 +285,10 @@ public struct SidebarView: View {
             .frame(height: 52)
             .padding(.top, 4)
             
-            // App Logo Icon
-            Image(systemName: "timer.circle.fill")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(Theme.accent)
+            // App Logo Icon (Minimal Timer matching menu bar and dock icon)
+            Image(systemName: "timer")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(Theme.accentLight)
                 .padding(.bottom, 2)
             
             // Quick "+ New Entry" Icon Button
