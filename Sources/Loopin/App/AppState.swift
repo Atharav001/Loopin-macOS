@@ -47,6 +47,7 @@ public final class AppState: ObservableObject {
     public static let shared = AppState()
     
     @Published public var selectedTab: NavigationTab = .calendar
+    @Published public var calendarSelectedDate: Date = Date()
     @Published public var isPinnedOnTop: Bool = false
     
     // Multi-Theme Selector (Default: Clockify Dark)

@@ -12,9 +12,7 @@ public struct CalendarView: View {
     @ObservedObject var calendarManager: CalendarManager = .shared
     @ObservedObject var googleAuth: GoogleAuthService = .shared
     
-    @State private var selectedDate: Date = Date()
     @State private var viewMode: CalendarViewMode = .month
-    @State private var isSidebarVisible: Bool = true
     
     // Event Editor Sheet State
     @State private var selectedEventForEdit: CalendarEvent?
@@ -28,68 +26,52 @@ public struct CalendarView: View {
     
     public var body: some View {
         VStack(spacing: 0) {
-            // 1. Top Navigation Bar
+            // 1. Top Navigation Bar (Full width, clean spacing)
             topNavigationBar
             
             Divider().background(Theme.border)
             
-            // 2. Main Body with Sidebar Drawer & Calendar Grid
-            HStack(spacing: 0) {
-                if isSidebarVisible {
-                    CalendarSidebarDrawer(
-                        selectedDate: $selectedDate,
-                        onCreateEvent: {
-                            selectedEventForEdit = nil
-                            draftRangeStart = selectedDate
-                            draftRangeEnd = selectedDate
+            // 2. Full Canvas Calendar Grid (Month or Year)
+            ZStack {
+                switch viewMode {
+                case .month:
+                    MonthCalendarGrid(
+                        monthDate: appState.calendarSelectedDate,
+                        onSelectEvent: { event in
+                            selectedEventForEdit = event
+                            draftRangeStart = nil
+                            draftRangeEnd = nil
                             isShowingEditor = true
+                        },
+                        onSelectRange: { start, end in
+                            selectedEventForEdit = nil
+                            draftRangeStart = start
+                            draftRangeEnd = end
+                            isShowingEditor = true
+                        },
+                        onScrollMonth: { delta in
+                            navigateDate(by: delta)
                         }
                     )
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-                }
-                
-                // Calendar Grid View (Month or Year)
-                ZStack {
-                    switch viewMode {
-                    case .month:
-                        MonthCalendarGrid(
-                            monthDate: selectedDate,
-                            onSelectEvent: { event in
-                                selectedEventForEdit = event
-                                draftRangeStart = nil
-                                draftRangeEnd = nil
-                                isShowingEditor = true
-                            },
-                            onSelectRange: { start, end in
-                                selectedEventForEdit = nil
-                                draftRangeStart = start
-                                draftRangeEnd = end
-                                isShowingEditor = true
-                            },
-                            onScrollMonth: { delta in
-                                navigateDate(by: delta)
+                case .year:
+                    YearCalendarGrid(
+                        year: cal.component(.year, from: appState.calendarSelectedDate),
+                        onSelectMonth: { monthDate in
+                            appState.calendarSelectedDate = monthDate
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                viewMode = .month
                             }
-                        )
-                    case .year:
-                        YearCalendarGrid(
-                            year: cal.component(.year, from: selectedDate),
-                            onSelectMonth: { monthDate in
-                                selectedDate = monthDate
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    viewMode = .month
-                                }
-                            },
-                            onSelectDay: { dayDate in
-                                selectedDate = dayDate
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    viewMode = .month
-                                }
+                        },
+                        onSelectDay: { dayDate in
+                            appState.calendarSelectedDate = dayDate
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                viewMode = .month
                             }
-                        )
-                    }
+                        }
+                    )
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.bgDeep)
         .sheet(isPresented: $isShowingEditor) {
@@ -105,32 +87,16 @@ public struct CalendarView: View {
     // MARK: - Top Navigation Bar
     private var topNavigationBar: some View {
         HStack(spacing: 12) {
-            // Sidebar Toggle
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isSidebarVisible.toggle()
-                }
-            }) {
-                Image(systemName: "sidebar.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Theme.textSecondary)
-                    .frame(width: 28, height: 28)
-                    .background(Theme.bgSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-            .buttonStyle(.plain)
-            .help("Toggle Calendar Sidebar")
-            
             // "Today" Button
             Button(action: {
                 withAnimation {
-                    selectedDate = Date()
+                    appState.calendarSelectedDate = Date()
                 }
             }) {
                 Text("Today")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Theme.textPrimary)
-                    .padding(.horizontal, 11)
+                    .padding(.horizontal, 12)
                     .frame(height: 28)
                     .background(Theme.bgSubtle)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -194,9 +160,34 @@ public struct CalendarView: View {
             }
             .menuStyle(.borderlessButton)
             
+            // "+ New Event" Button
+            Button(action: {
+                selectedEventForEdit = nil
+                draftRangeStart = appState.calendarSelectedDate
+                draftRangeEnd = appState.calendarSelectedDate
+                isShowingEditor = true
+            }) {
+                HStack(spacing: 5) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("New Event")
+                        .font(.system(size: 11.5, weight: .semibold))
+                }
+                .foregroundColor(Theme.accent)
+                .padding(.horizontal, 10)
+                .frame(height: 28)
+                .background(Theme.accent.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Theme.accent.opacity(0.25), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            
             Spacer()
             
-            // Sync Button (Google Calendar & Local Store Sync)
+            // Sync Button
             Button(action: {
                 Task {
                     await calendarManager.syncWithGoogleCalendar()
@@ -233,30 +224,21 @@ public struct CalendarView: View {
             .pickerStyle(.segmented)
             .frame(width: 130)
             
-            // Google Account Avatar / Badge
+            // Google Account Pill
             Button(action: {
                 appState.selectedTab = .account
             }) {
                 HStack(spacing: 6) {
-                    if appState.isSignedInWithGoogle {
-                        Circle()
-                            .fill(Theme.productive)
-                            .frame(width: 8, height: 8)
-                        
-                        Text(appState.googleUserName)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Theme.textPrimary)
-                            .lineLimit(1)
-                    } else {
-                        Image(systemName: "globe")
-                            .font(.system(size: 11))
-                            .foregroundColor(Theme.textMuted)
-                        Text("Connect Google")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Theme.textSecondary)
-                    }
+                    Circle()
+                        .fill(appState.isSignedInWithGoogle ? Theme.productive : Theme.accent)
+                        .frame(width: 7, height: 7)
+                    
+                    Text(appState.googleUserEmail.isEmpty ? "atharavnarang05@gmail.com" : appState.googleUserEmail)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Theme.textPrimary)
+                        .lineLimit(1)
                 }
-                .padding(.horizontal, 9)
+                .padding(.horizontal, 10)
                 .frame(height: 28)
                 .background(Theme.bgSubtle)
                 .clipShape(Capsule())
@@ -266,7 +248,7 @@ public struct CalendarView: View {
                 )
             }
             .buttonStyle(.plain)
-            .help(appState.isSignedInWithGoogle ? "Connected as \(appState.googleUserEmail)" : "Click to connect your Google Calendar account in Account settings")
+            .help("Google Calendar Account: \(appState.googleUserEmail)")
         }
         .padding(.horizontal, 16)
         .frame(height: 48)
@@ -280,47 +262,45 @@ public struct CalendarView: View {
         } else {
             f.dateFormat = "yyyy"
         }
-        return f.string(from: selectedDate)
+        return f.string(from: appState.calendarSelectedDate)
     }
     
     // MARK: - Exact Year/Month Specific Navigation
     private func navigateDate(by delta: Int) {
         withAnimation(.easeInOut(duration: 0.15)) {
             if viewMode == .month {
-                // Ensure anchor is the 1st of current month to prevent 31-day overflow skipping
-                var comps = cal.dateComponents([.year, .month], from: selectedDate)
+                var comps = cal.dateComponents([.year, .month], from: appState.calendarSelectedDate)
                 comps.day = 1
                 if let firstOfMonth = cal.date(from: comps),
                    let next = cal.date(byAdding: .month, value: delta, to: firstOfMonth) {
-                    selectedDate = next
+                    appState.calendarSelectedDate = next
                 }
             } else {
-                // Year navigation
-                var comps = cal.dateComponents([.year], from: selectedDate)
-                comps.month = cal.component(.month, from: selectedDate)
+                var comps = cal.dateComponents([.year], from: appState.calendarSelectedDate)
+                comps.month = cal.component(.month, from: appState.calendarSelectedDate)
                 comps.day = 1
                 if let first = cal.date(from: comps),
                    let next = cal.date(byAdding: .year, value: delta, to: first) {
-                    selectedDate = next
+                    appState.calendarSelectedDate = next
                 }
             }
         }
     }
     
     private func jumpToYear(_ year: Int) {
-        var comps = cal.dateComponents([.month, .day], from: selectedDate)
+        var comps = cal.dateComponents([.month, .day], from: appState.calendarSelectedDate)
         comps.year = year
         if let target = cal.date(from: comps) {
-            withAnimation { selectedDate = target }
+            withAnimation { appState.calendarSelectedDate = target }
         }
     }
     
     private func jumpToMonth(_ month: Int) {
-        var comps = cal.dateComponents([.year], from: selectedDate)
+        var comps = cal.dateComponents([.year], from: appState.calendarSelectedDate)
         comps.month = month
         comps.day = 1
         if let target = cal.date(from: comps) {
-            withAnimation { selectedDate = target }
+            withAnimation { appState.calendarSelectedDate = target }
         }
     }
     

@@ -103,39 +103,56 @@ public struct SidebarView: View {
             .padding(.top, 4)
             .padding(.bottom, 16)
             
-            // 3. Navigation Items
-            VStack(alignment: .leading, spacing: 3) {
-                Text("MAIN VIEWS")
-                    .font(.system(size: 9.5, weight: .bold))
-                    .foregroundColor(Theme.textMuted)
-                    .tracking(0.8)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
-                
-                sidebarButton(for: .calendar)
-                sidebarButton(for: .weekCalendar)
-                sidebarButton(for: .rails)
-                sidebarButton(for: .analytics)
-                sidebarButton(for: .dictionary)
-                sidebarButton(for: .focusPrompts)
-                sidebarButton(for: .account)
-                
-                Divider()
-                    .background(Theme.border)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                
-                Text("PREFERENCES")
-                    .font(.system(size: 9.5, weight: .bold))
-                    .foregroundColor(Theme.textMuted)
-                    .tracking(0.8)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
-                
-                sidebarButton(for: .settings)
+            // 3. Navigation Items & Calendar Accounts (Scrollable when window height is compact)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("MAIN VIEWS")
+                        .font(.system(size: 9.5, weight: .bold))
+                        .foregroundColor(Theme.textMuted)
+                        .tracking(0.8)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 4)
+                    
+                    sidebarButton(for: .calendar)
+                    
+                    if appState.selectedTab == .calendar {
+                        calendarAccountsSection
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    
+                    sidebarButton(for: .weekCalendar)
+                    sidebarButton(for: .rails)
+                    sidebarButton(for: .analytics)
+                    sidebarButton(for: .dictionary)
+                    sidebarButton(for: .focusPrompts)
+                    sidebarButton(for: .account)
+                    
+                    Divider()
+                        .background(Theme.border)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                    
+                    Text("PREFERENCES")
+                        .font(.system(size: 9.5, weight: .bold))
+                        .foregroundColor(Theme.textMuted)
+                        .tracking(0.8)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 4)
+                    
+                    sidebarButton(for: .settings)
+                    
+                    // Mini Calendar when on Calendar Tab
+                    if appState.selectedTab == .calendar {
+                        sidebarMiniCalendar
+                            .padding(.horizontal, 10)
+                            .padding(.top, 8)
+                            .padding(.bottom, 4)
+                            .transition(.opacity)
+                    }
+                }
             }
             
-            Spacer()
+            Spacer(minLength: 4)
             
             // 4. Bottom Footer: Live Interval Status, Dropdown Theme Switcher & Window Pin
             VStack(spacing: 8) {
@@ -265,5 +282,201 @@ public struct SidebarView: View {
         .onHover { hovering in
             hoveredTab = hovering ? tab : nil
         }
+    }
+    
+    // MARK: - Apple Calendar Style Accounts Section
+    private var calendarAccountsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Group 1: Google
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Google")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(Theme.textMuted)
+                    .padding(.horizontal, 16)
+                
+                calendarToggleRow(
+                    id: "google",
+                    title: appState.googleUserEmail.isEmpty ? "atharavnarang05@gmail.com" : appState.googleUserEmail,
+                    color: Color(red: 79/255, green: 170/255, blue: 189/255)
+                )
+                
+                calendarToggleRow(
+                    id: "holidays_india",
+                    title: "Holidays in India",
+                    color: Color(red: 52/255, green: 168/255, blue: 83/255)
+                )
+            }
+            
+            // Group 2: Loopin
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Loopin")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(Theme.textMuted)
+                    .padding(.horizontal, 16)
+                
+                calendarToggleRow(
+                    id: "logged",
+                    title: "Log Sheet",
+                    color: Color(red: 16/255, green: 185/255, blue: 129/255)
+                )
+                
+                calendarToggleRow(
+                    id: "planned",
+                    title: "Pre-planned",
+                    color: Color(red: 139/255, green: 92/255, blue: 246/255)
+                )
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func calendarToggleRow(id: String, title: String, color: Color) -> some View {
+        let isChecked = CalendarManager.shared.isCalendarVisible(id: id)
+        
+        return Button(action: {
+            CalendarManager.shared.toggleCalendarVisibility(id: id)
+        }) {
+            HStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 3.5)
+                        .fill(isChecked ? color : Color.clear)
+                        .frame(width: 14, height: 14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 3.5)
+                                .stroke(color, lineWidth: 1.5)
+                        )
+                    
+                    if isChecked {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 8.5, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                
+                Text(title)
+                    .font(.system(size: 11, weight: isChecked ? .medium : .regular))
+                    .foregroundColor(isChecked ? Theme.textPrimary : Theme.textSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // MARK: - Mini Calendar in Sidebar
+    private var sidebarMiniCalendar: some View {
+        let cal = Calendar.current
+        let monthDate = appState.calendarSelectedDate
+        let daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"]
+        
+        let f = DateFormatter()
+        f.dateFormat = "MMMM yyyy"
+        let monthTitle = f.string(from: monthDate)
+        
+        return VStack(alignment: .leading, spacing: 6) {
+            // Month Header (< Month Year >)
+            HStack {
+                Button(action: {
+                    var comps = cal.dateComponents([.year, .month], from: appState.calendarSelectedDate)
+                    comps.day = 1
+                    if let first = cal.date(from: comps),
+                       let prev = cal.date(byAdding: .month, value: -1, to: first) {
+                        appState.calendarSelectedDate = prev
+                    }
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(Theme.textSecondary)
+                        .frame(width: 18, height: 18)
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                Text(monthTitle)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.textPrimary)
+                
+                Spacer()
+                
+                Button(action: {
+                    var comps = cal.dateComponents([.year, .month], from: appState.calendarSelectedDate)
+                    comps.day = 1
+                    if let first = cal.date(from: comps),
+                       let next = cal.date(byAdding: .month, value: 1, to: first) {
+                        appState.calendarSelectedDate = next
+                    }
+                }) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(Theme.textSecondary)
+                        .frame(width: 18, height: 18)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 4)
+            
+            // Days of Week Header (S M T W T F S)
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { idx in
+                    Text(daysOfWeek[idx])
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundColor(Theme.textMuted)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            
+            // Days Grid (6 Weeks with faded boundary days)
+            let days = generateMiniDays(for: monthDate)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 2) {
+                ForEach(days, id: \.self) { day in
+                    let isSelected = cal.isDate(day, inSameDayAs: appState.calendarSelectedDate)
+                    let isToday = cal.isDateInToday(day)
+                    let isCurrentMonth = cal.isDate(day, equalTo: monthDate, toGranularity: .month)
+                    let dayNum = cal.component(.day, from: day)
+                    
+                    Button(action: {
+                        appState.calendarSelectedDate = day
+                    }) {
+                        Text("\(dayNum)")
+                            .font(.system(size: 9.5, weight: isSelected || isToday ? .bold : (isCurrentMonth ? .semibold : .regular)))
+                            .foregroundColor(
+                                isToday ? Color.white :
+                                (isSelected ? Color.white :
+                                (isCurrentMonth ? Theme.textPrimary : Theme.textMuted.opacity(0.35)))
+                            )
+                            .frame(width: 19, height: 19)
+                            .background(
+                                ZStack {
+                                    if isToday {
+                                        Circle().fill(Color(red: 235/255, green: 59/255, blue: 50/255))
+                                    } else if isSelected {
+                                        Circle().fill(Theme.accent)
+                                    }
+                                }
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(8)
+        .background(Theme.bgSubtle)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+    
+    private func generateMiniDays(for date: Date) -> [Date] {
+        let cal = Calendar.current
+        guard let monthInterval = cal.dateInterval(of: .month, for: date) else { return [] }
+        let startOfMonth = monthInterval.start
+        let weekday = cal.component(.weekday, from: startOfMonth)
+        let daysToPrepend = weekday - 1
+        let firstCalendarDay = cal.date(byAdding: .day, value: -daysToPrepend, to: startOfMonth) ?? startOfMonth
+        return (0..<42).compactMap { cal.date(byAdding: .day, value: $0, to: firstCalendarDay) }
     }
 }
