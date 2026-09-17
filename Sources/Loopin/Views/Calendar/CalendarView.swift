@@ -25,55 +25,73 @@ public struct CalendarView: View {
     private var cal: Calendar { Calendar.current }
     
     public var body: some View {
-        VStack(spacing: 0) {
-            // 1. Top Navigation Bar (Full width, clean spacing)
-            topNavigationBar
-            
-            Divider().background(Theme.border)
-            
-            // 2. Full Canvas Calendar Grid (Month or Year)
-            ZStack {
-                switch viewMode {
-                case .month:
-                    MonthCalendarGrid(
-                        monthDate: appState.calendarSelectedDate,
-                        onSelectEvent: { event in
-                            selectedEventForEdit = event
-                            draftRangeStart = nil
-                            draftRangeEnd = nil
-                            isShowingEditor = true
-                        },
-                        onSelectRange: { start, end in
-                            selectedEventForEdit = nil
-                            draftRangeStart = start
-                            draftRangeEnd = end
-                            isShowingEditor = true
-                        },
-                        onScrollMonth: { delta in
-                            navigateDate(by: delta)
-                        }
-                    )
-                case .year:
-                    YearCalendarGrid(
-                        year: cal.component(.year, from: appState.calendarSelectedDate),
-                        onSelectMonth: { monthDate in
-                            appState.calendarSelectedDate = monthDate
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                viewMode = .month
-                            }
-                        },
-                        onSelectDay: { dayDate in
-                            appState.calendarSelectedDate = dayDate
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                viewMode = .month
-                            }
-                        }
-                    )
-                }
+        HStack(spacing: 0) {
+            // 1. Dedicated Calendar Secondary Sidebar
+            if appState.isCalendarSidebarVisible {
+                CalendarSidebarDrawer(
+                    selectedDate: $appState.calendarSelectedDate,
+                    onCreateEvent: {
+                        selectedEventForEdit = nil
+                        draftRangeStart = appState.calendarSelectedDate
+                        draftRangeEnd = appState.calendarSelectedDate
+                        isShowingEditor = true
+                    }
+                )
+                .transition(.move(edge: .leading).combined(with: .opacity))
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            
+            // 2. Main Calendar Canvas with Header Bar
+            VStack(spacing: 0) {
+                // Top Navigation Bar
+                topNavigationBar
+                
+                Divider().background(Theme.border)
+                
+                // Full Canvas Calendar Grid (Month or Year)
+                ZStack {
+                    switch viewMode {
+                    case .month:
+                        MonthCalendarGrid(
+                            monthDate: appState.calendarSelectedDate,
+                            onSelectEvent: { event in
+                                selectedEventForEdit = event
+                                draftRangeStart = nil
+                                draftRangeEnd = nil
+                                isShowingEditor = true
+                            },
+                            onSelectRange: { start, end in
+                                selectedEventForEdit = nil
+                                draftRangeStart = start
+                                draftRangeEnd = end
+                                isShowingEditor = true
+                            },
+                            onScrollMonth: { delta in
+                                navigateDate(by: delta)
+                            }
+                        )
+                    case .year:
+                        YearCalendarGrid(
+                            year: cal.component(.year, from: appState.calendarSelectedDate),
+                            onSelectMonth: { monthDate in
+                                appState.calendarSelectedDate = monthDate
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewMode = .month
+                                }
+                            },
+                            onSelectDay: { dayDate in
+                                appState.calendarSelectedDate = dayDate
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewMode = .month
+                                }
+                            }
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .background(Theme.bgDeep)
+        .animation(.spring(response: 0.28, dampingFraction: 0.85), value: appState.isCalendarSidebarVisible)
         .sheet(isPresented: $isShowingEditor) {
             CalendarEventEditorSheet(
                 event: $selectedEventForEdit,
@@ -87,6 +105,28 @@ public struct CalendarView: View {
     // MARK: - Top Navigation Bar
     private var topNavigationBar: some View {
         HStack(spacing: 12) {
+            // Show Calendars Sidebar Button (visible when sidebar is hidden)
+            if !appState.isCalendarSidebarVisible {
+                Button(action: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                        appState.isCalendarSidebarVisible = true
+                    }
+                }) {
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Theme.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(Theme.bgSubtle)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Theme.border, lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .help("Show Calendars Panel")
+            }
+            
             // "Today" Button
             Button(action: {
                 withAnimation {

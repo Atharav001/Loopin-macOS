@@ -49,6 +49,8 @@ public final class AppState: ObservableObject {
     @Published public var selectedTab: NavigationTab = .calendar
     @Published public var calendarSelectedDate: Date = Date()
     @Published public var isPinnedOnTop: Bool = false
+    @Published public var isSidebarCollapsed: Bool = false
+    @Published public var isCalendarSidebarVisible: Bool = true
     
     // Multi-Theme Selector (Default: Clockify Dark)
     @Published public var currentTheme: AppTheme = {
