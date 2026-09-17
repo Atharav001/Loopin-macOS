@@ -161,4 +161,84 @@ public final class GoogleCalendarService: ObservableObject, @unchecked Sendable 
         self.isSyncing = false
         self.statusMessage = pushedCount > 0 ? "Synced \(pushedCount) events to Google Calendar" : "Calendars up to date"
     }
+    
+    // MARK: - Fetch Events from Google Calendar
+    public func fetchEvents(timeMin: Date, timeMax: Date) async -> [CalendarEvent] {
+        let config = GoogleCalendarConfig.shared
+        guard let token = config.accessToken, !token.isEmpty else { return [] }
+        
+        let isoFormatter = ISO8601DateFormatter()
+        let minStr = isoFormatter.string(from: timeMin)
+        let maxStr = isoFormatter.string(from: timeMax)
+        
+        let calId = config.plannedCalendarId ?? "primary"
+        guard let url = URL(string: "https://www.googleapis.com/calendar/v3/calendars/\(calId)/events?timeMin=\(minStr)&timeMax=\(maxStr)&singleEvents=true&orderBy=startTime") else {
+            return []
+        }
+        
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        guard let (data, response) = try? await session.data(for: request),
+              let httpRes = response as? HTTPURLResponse, (200...299).contains(httpRes.statusCode) else {
+            return []
+        }
+        
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["items"] as? [[String: Any]] else {
+            return []
+        }
+        
+        var results: [CalendarEvent] = []
+        for item in items {
+            guard let summary = item["summary"] as? String else { continue }
+            let idStr = item["id"] as? String ?? UUID().uuidString
+            let location = item["location"] as? String
+            let description = item["description"] as? String
+            
+            var sDate = timeMin
+            var eDate = timeMax
+            var isAllDay = false
+            
+            if let startDict = item["start"] as? [String: Any] {
+                if let dt = startDict["dateTime"] as? String, let d = isoFormatter.date(from: dt) {
+                    sDate = d
+                } else if let dateOnly = startDict["date"] as? String {
+                    let df = DateFormatter()
+                    df.dateFormat = "yyyy-MM-dd"
+                    if let d = df.date(from: dateOnly) {
+                        sDate = d
+                        isAllDay = true
+                    }
+                }
+            }
+            
+            if let endDict = item["end"] as? [String: Any] {
+                if let dt = endDict["dateTime"] as? String, let d = isoFormatter.date(from: dt) {
+                    eDate = d
+                } else if let dateOnly = endDict["date"] as? String {
+                    let df = DateFormatter()
+                    df.dateFormat = "yyyy-MM-dd"
+                    if let d = df.date(from: dateOnly) {
+                        eDate = d
+                    }
+                }
+            }
+            
+            results.append(CalendarEvent(
+                id: UUID(),
+                title: summary,
+                startDate: sDate,
+                endDate: eDate,
+                isAllDay: isAllDay,
+                calendarId: "google",
+                colorHex: "#0288EB",
+                location: location,
+                notes: description,
+                gcalId: idStr
+            ))
+        }
+        
+        return results
+    }
 }

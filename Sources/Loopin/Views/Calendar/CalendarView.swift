@@ -24,9 +24,11 @@ public struct CalendarView: View {
     
     public init() {}
     
+    private var cal: Calendar { Calendar.current }
+    
     public var body: some View {
         VStack(spacing: 0) {
-            // 1. Google Calendar Top Bar
+            // 1. Top Navigation Bar
             topNavigationBar
             
             Divider().background(Theme.border)
@@ -67,7 +69,7 @@ public struct CalendarView: View {
                         )
                     case .year:
                         YearCalendarGrid(
-                            year: Calendar.current.component(.year, from: selectedDate),
+                            year: cal.component(.year, from: selectedDate),
                             onSelectMonth: { monthDate in
                                 selectedDate = monthDate
                                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -116,24 +118,6 @@ public struct CalendarView: View {
             .buttonStyle(.plain)
             .help("Toggle Calendar Sidebar")
             
-            // App Title Icon + "Calendar" (with today's day number in blue box like Google Calendar)
-            HStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Theme.accent)
-                        .frame(width: 24, height: 24)
-                    
-                    Text("\(Calendar.current.component(.day, from: Date()))")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                }
-                
-                Text("Calendar")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundColor(Theme.textPrimary)
-            }
-            .padding(.trailing, 6)
-            
             // "Today" Button
             Button(action: {
                 withAnimation {
@@ -173,10 +157,39 @@ public struct CalendarView: View {
                 .buttonStyle(.plain)
             }
             
-            // Main Month/Year Title (e.g. "September 2026")
-            Text(currentFormattedHeaderTitle)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(Theme.textPrimary)
+            // Main Month/Year Title with Direct Quick Jump Menu
+            Menu {
+                // Quick jump to Years
+                Section("Select Year") {
+                    ForEach([2024, 2025, 2026, 2027, 2028, 2029, 2030], id: \.self) { yr in
+                        Button(action: { jumpToYear(yr) }) {
+                            Text("\(yr)")
+                        }
+                    }
+                }
+                
+                // Quick jump to Months
+                if viewMode == .month {
+                    Section("Select Month") {
+                        ForEach(1...12, id: \.self) { m in
+                            Button(action: { jumpToMonth(m) }) {
+                                Text(monthNameFor(m))
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(currentFormattedHeaderTitle)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(Theme.textPrimary)
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Theme.textMuted)
+                }
+            }
+            .menuStyle(.borderlessButton)
             
             Spacer()
             
@@ -235,7 +248,7 @@ public struct CalendarView: View {
                         Image(systemName: "globe")
                             .font(.system(size: 11))
                             .foregroundColor(Theme.textMuted)
-                        Text("Google Cal")
+                        Text("Connect Google")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Theme.textSecondary)
                     }
@@ -250,7 +263,7 @@ public struct CalendarView: View {
                 )
             }
             .buttonStyle(.plain)
-            .help(appState.isSignedInWithGoogle ? "Connected as \(appState.googleUserEmail)" : "Connect your Google Calendar account")
+            .help(appState.isSignedInWithGoogle ? "Connected as \(appState.googleUserEmail)" : "Click to connect your Google Calendar account in Account settings")
         }
         .padding(.horizontal, 16)
         .frame(height: 48)
@@ -267,18 +280,49 @@ public struct CalendarView: View {
         return f.string(from: selectedDate)
     }
     
+    // MARK: - Exact Year/Month Specific Navigation
     private func navigateDate(by delta: Int) {
-        let cal = Calendar.current
         withAnimation(.easeInOut(duration: 0.15)) {
             if viewMode == .month {
-                if let next = cal.date(byAdding: .month, value: delta, to: selectedDate) {
+                // Ensure anchor is the 1st of current month to prevent 31-day overflow skipping
+                var comps = cal.dateComponents([.year, .month], from: selectedDate)
+                comps.day = 1
+                if let firstOfMonth = cal.date(from: comps),
+                   let next = cal.date(byAdding: .month, value: delta, to: firstOfMonth) {
                     selectedDate = next
                 }
             } else {
-                if let next = cal.date(byAdding: .year, value: delta, to: selectedDate) {
+                // Year navigation
+                var comps = cal.dateComponents([.year], from: selectedDate)
+                comps.month = cal.component(.month, from: selectedDate)
+                comps.day = 1
+                if let first = cal.date(from: comps),
+                   let next = cal.date(byAdding: .year, value: delta, to: first) {
                     selectedDate = next
                 }
             }
         }
+    }
+    
+    private func jumpToYear(_ year: Int) {
+        var comps = cal.dateComponents([.month, .day], from: selectedDate)
+        comps.year = year
+        if let target = cal.date(from: comps) {
+            withAnimation { selectedDate = target }
+        }
+    }
+    
+    private func jumpToMonth(_ month: Int) {
+        var comps = cal.dateComponents([.year], from: selectedDate)
+        comps.month = month
+        comps.day = 1
+        if let target = cal.date(from: comps) {
+            withAnimation { selectedDate = target }
+        }
+    }
+    
+    private func monthNameFor(_ month: Int) -> String {
+        let f = DateFormatter()
+        return f.monthSymbols[month - 1]
     }
 }

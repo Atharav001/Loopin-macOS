@@ -7,10 +7,17 @@ public final class CalendarManager: ObservableObject {
     public static let shared = CalendarManager()
     
     private let customEventsStorageKey = "Loopin_Calendar_CustomEvents"
-    private let visibleCalendarsKey = "Loopin_Calendar_VisibleIds"
+    private let visibleCalendarsKey = "Loopin_Calendar_VisibleIds_v2"
     
     @Published public var customEvents: [CalendarEvent] = []
-    @Published public var visibleCalendarIds: Set<String> = ["primary", "birthdays", "tasks", "holidays_india"] {
+    @Published public var googleEvents: [CalendarEvent] = []
+    
+    // Four real, toggleable calendar groups:
+    // 1. "logged" -> Actual logged entries from app
+    // 2. "planned" -> Planned rails / tasks
+    // 3. "google" -> Connected Google Calendar
+    // 4. "holidays_india" -> Official Indian holidays
+    @Published public var visibleCalendarIds: Set<String> = ["logged", "planned", "google", "holidays_india"] {
         didSet {
             UserDefaults.standard.set(Array(visibleCalendarIds), forKey: visibleCalendarsKey)
         }
@@ -26,7 +33,7 @@ public final class CalendarManager: ObservableObject {
     }
     
     private func loadSettings() {
-        if let saved = UserDefaults.standard.stringArray(forKey: visibleCalendarsKey) {
+        if let saved = UserDefaults.standard.stringArray(forKey: visibleCalendarsKey), !saved.isEmpty {
             visibleCalendarIds = Set(saved)
         }
     }
@@ -36,20 +43,7 @@ public final class CalendarManager: ObservableObject {
            let decoded = try? JSONDecoder().decode([CalendarEvent].self, from: data) {
             customEvents = decoded
         } else {
-            // Seed a sample initial event if none exists
-            let cal = Calendar.current
-            let now = Date()
-            let sample = CalendarEvent(
-                title: "Product Roadmap Review",
-                startDate: now,
-                endDate: cal.date(byAdding: .day, value: 2, to: now) ?? now,
-                isAllDay: true,
-                calendarId: "primary",
-                colorHex: "#0288EB",
-                notes: "Quarterly review of Loopin features"
-            )
-            customEvents = [sample]
-            saveCustomEvents()
+            customEvents = []
         }
     }
     
@@ -64,7 +58,6 @@ public final class CalendarManager: ObservableObject {
         customEvents.append(event)
         saveCustomEvents()
         
-        // If Google Calendar is connected, push asynchronously
         Task {
             await pushEventToGoogleCalendarIfNeeded(event)
         }
@@ -83,6 +76,7 @@ public final class CalendarManager: ObservableObject {
     
     public func deleteEvent(id: UUID) {
         customEvents.removeAll { $0.id == id }
+        googleEvents.removeAll { $0.id == id }
         saveCustomEvents()
     }
     
@@ -98,41 +92,62 @@ public final class CalendarManager: ObservableObject {
         visibleCalendarIds.contains(id)
     }
     
-    // MARK: - Filtered Active Events
+    // MARK: - Aggregated Visible Events
     public func allVisibleEvents(forYear year: Int) -> [CalendarEvent] {
         var result: [CalendarEvent] = []
         
-        // 1. Holidays in India
+        // 1. Indian Holidays Calendar
         if visibleCalendarIds.contains("holidays_india") {
             let holidays = HolidaysProvider.holidays(for: year)
-            // also load previous and next year for edge months (Dec-Jan)
             let prevHolidays = HolidaysProvider.holidays(for: year - 1)
             let nextHolidays = HolidaysProvider.holidays(for: year + 1)
             result.append(contentsOf: holidays + prevHolidays + nextHolidays)
         }
         
-        // 2. Custom Events (User's primary, birthdays, custom)
-        let filteredCustom = customEvents.filter { visibleCalendarIds.contains($0.calendarId) }
-        result.append(contentsOf: filteredCustom)
-        
-        // 3. Loopin Logged & Planned Timesheet Entries
-        if visibleCalendarIds.contains("tasks") {
-            let entries = DatabaseManager.shared.fetchAllEntries()
+        // 2. Loopin Logged (Actual) Entries - Logged on the app itself
+        if visibleCalendarIds.contains("logged") {
+            let entries = DatabaseManager.shared.fetchAllEntries().filter { $0.kind == EntryKind.logged.rawValue }
             for entry in entries {
-                let colorHex = entry.kind == EntryKind.planned.rawValue ? "#8B5CF6" : "#10B981"
-                let calId = "tasks"
-                let calEvent = CalendarEvent(
+                let colorHex = entry.productivity == "wasteful" ? "#EF4444" : "#10B981"
+                result.append(CalendarEvent(
                     id: UUID(uuidString: entry.id) ?? UUID(),
-                    title: entry.rawText.isEmpty ? (entry.category ?? "Activity") : entry.rawText,
+                    title: entry.rawText.isEmpty ? (entry.category ?? "Logged Entry") : entry.rawText,
                     startDate: entry.startAt,
                     endDate: entry.endAt,
                     isAllDay: false,
-                    calendarId: calId,
+                    calendarId: "logged",
                     colorHex: colorHex,
-                    notes: "Logged via Loopin: \(entry.productivity ?? "productive")"
-                )
-                result.append(calEvent)
+                    notes: "Actual Log • \(entry.productivity?.capitalized ?? "Productive")"
+                ))
             }
+        }
+        
+        // 3. Loopin Planned Rails Entries
+        if visibleCalendarIds.contains("planned") {
+            let entries = DatabaseManager.shared.fetchAllEntries().filter { $0.kind == EntryKind.planned.rawValue }
+            for entry in entries {
+                result.append(CalendarEvent(
+                    id: UUID(uuidString: entry.id) ?? UUID(),
+                    title: entry.rawText.isEmpty ? (entry.category ?? "Planned Task") : entry.rawText,
+                    startDate: entry.startAt,
+                    endDate: entry.endAt,
+                    isAllDay: false,
+                    calendarId: "planned",
+                    colorHex: "#8B5CF6",
+                    notes: "Planned Block"
+                ))
+            }
+            
+            // Custom planned events created directly in Calendar
+            let customPlanned = customEvents.filter { $0.calendarId == "planned" || $0.calendarId == "primary" }
+            result.append(contentsOf: customPlanned)
+        }
+        
+        // 4. Connected Google Calendar Events
+        if visibleCalendarIds.contains("google") {
+            result.append(contentsOf: googleEvents)
+            let customGoogle = customEvents.filter { $0.calendarId == "google" }
+            result.append(contentsOf: customGoogle)
         }
         
         return result
@@ -143,11 +158,23 @@ public final class CalendarManager: ObservableObject {
         isSyncing = true
         syncStatusMessage = "Syncing with Google Calendar..."
         
-        // Call GoogleCalendarService
+        // Push pending local entries
         await GoogleCalendarService.shared.syncAll()
         
-        // Artificial micro-pause for smooth UI feedback
-        try? await Task.sleep(nanoseconds: 400_000_000)
+        // Pull remote events if signed in
+        if AppState.shared.isSignedInWithGoogle {
+            let cal = Calendar.current
+            let now = Date()
+            let timeMin = cal.date(byAdding: .month, value: -6, to: now) ?? now
+            let timeMax = cal.date(byAdding: .month, value: 12, to: now) ?? now
+            
+            let remoteEvents = await GoogleCalendarService.shared.fetchEvents(timeMin: timeMin, timeMax: timeMax)
+            if !remoteEvents.isEmpty {
+                self.googleEvents = remoteEvents
+            }
+        }
+        
+        try? await Task.sleep(nanoseconds: 300_000_000)
         
         self.lastSyncDate = Date()
         self.isSyncing = false
@@ -159,10 +186,9 @@ public final class CalendarManager: ObservableObject {
     private func pushEventToGoogleCalendarIfNeeded(_ event: CalendarEvent) async {
         guard GoogleCalendarConfig.shared.isConnected else { return }
         
-        // Create matching TimesheetEntry payload for pushEntry
         let entry = TimesheetEntry(
             id: event.id.uuidString,
-            kind: EntryKind.planned.rawValue,
+            kind: event.calendarId == "logged" ? EntryKind.logged.rawValue : EntryKind.planned.rawValue,
             startAt: event.startDate,
             endAt: event.endDate,
             rawText: event.title,

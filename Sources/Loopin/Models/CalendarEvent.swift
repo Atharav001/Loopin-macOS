@@ -8,7 +8,7 @@ public struct CalendarEvent: Identifiable, Codable, Equatable, Sendable {
     public var startDate: Date
     public var endDate: Date
     public var isAllDay: Bool
-    public var calendarId: String // "primary", "logged", "planned", "birthdays", "holidays_india", "custom"
+    public var calendarId: String // "logged", "planned", "google", "holidays_india"
     public var colorHex: String
     public var location: String?
     public var notes: String?
@@ -20,8 +20,8 @@ public struct CalendarEvent: Identifiable, Codable, Equatable, Sendable {
         startDate: Date,
         endDate: Date,
         isAllDay: Bool = true,
-        calendarId: String = "primary",
-        colorHex: String = "#0288EB",
+        calendarId: String = "planned",
+        colorHex: String = "#8B5CF6",
         location: String? = nil,
         notes: String? = nil,
         gcalId: String? = nil
@@ -59,14 +59,14 @@ public extension Color {
         Scanner(string: hex).scanHexInt64(&int)
         let a, r, g, b: UInt64
         switch hex.count {
-        case 3: // RGB (12-bit)
+        case 3:
             (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
+        case 6:
             (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
+        case 8:
             (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
         default:
-            (a, r, g, b) = (255, 2, 136, 235) // Default accent blue
+            (a, r, g, b) = (255, 2, 136, 235)
         }
         self.init(
             .sRGB,
@@ -86,26 +86,7 @@ public extension Color {
     }
 }
 
-// MARK: - Calendar Meta Information
-public struct CalendarMeta: Identifiable, Hashable, Sendable {
-    public let id: String
-    public let name: String
-    public let colorHex: String
-    public let isSystemOrHoliday: Bool
-    
-    public init(id: String, name: String, colorHex: String, isSystemOrHoliday: Bool = false) {
-        self.id = id
-        self.name = name
-        self.colorHex = colorHex
-        self.isSystemOrHoliday = isSystemOrHoliday
-    }
-    
-    public var color: Color {
-        Color(hex: colorHex)
-    }
-}
-
-// MARK: - Holidays Provider (India & Global)
+// MARK: - Holidays Provider (Accurate Year-Specific Indian Holidays)
 public enum HolidaysProvider {
     public static func holidays(for year: Int) -> [CalendarEvent] {
         var items: [CalendarEvent] = []
@@ -124,36 +105,101 @@ public enum HolidaysProvider {
         
         let emeraldGreen = "#34A853" // Google Calendar Holiday Green (#34A853)
         
-        // India Holidays (Fixed and key festivals for 2025, 2026, 2027)
-        let holidayTable: [(month: Int, day: Int, name: String)] = [
+        // 1. Fixed National Holidays (Same date every year)
+        let fixedHolidays: [(month: Int, day: Int, name: String)] = [
+            (1, 1, "New Year's Day"),
             (1, 26, "Republic Day"),
-            (3, 4, "Maha Shivratri"),
-            (3, 15, "Holi"),
-            (4, 3, "Good Friday"),
-            (4, 14, "Ambedkar Jayanti"),
-            (5, 1, "Labour Day"),
+            (4, 14, "Dr. Ambedkar Jayanti"),
+            (5, 1, "Maharashtra Day / Labour Day"),
             (8, 15, "Independence Day"),
-            (8, 28, "Raksha Bandhan"),
-            (9, 4, "Janmashtami (Smarta)"),
-            (9, 14, "Ganesh Chaturthi"),
             (10, 2, "Mahatma Gandhi Jayanti"),
-            (10, 20, "Dussehra (Vijayadashami)"),
-            (11, 8, "Diwali (Deepavali)"),
-            (11, 9, "Govardhan Puja"),
-            (11, 10, "Bhai Dooj"),
-            (11, 24, "Guru Nanak Jayanti"),
-            (12, 25, "Christmas Day"),
-            (1, 1, "New Year's Day")
+            (12, 25, "Christmas Day")
         ]
         
-        for h in holidayTable {
-            let sDate = makeDate(year: year, month: h.month, day: h.day)
-            let eDate = sDate
+        for h in fixedHolidays {
+            let d = makeDate(year: year, month: h.month, day: h.day)
             items.append(CalendarEvent(
                 id: UUID(),
                 title: h.name,
-                startDate: sDate,
-                endDate: eDate,
+                startDate: d,
+                endDate: d,
+                isAllDay: true,
+                calendarId: "holidays_india",
+                colorHex: emeraldGreen,
+                location: "India"
+            ))
+        }
+        
+        // 2. Year-Specific Movable Festivals (Astronomic Lunar Calendar for India)
+        let movableTableByYear: [Int: [(month: Int, day: Int, name: String)]] = [
+            2025: [
+                (2, 26, "Maha Shivratri"),
+                (3, 14, "Holi"),
+                (3, 31, "Eid-ul-Fitr"),
+                (4, 18, "Good Friday"),
+                (8, 9, "Raksha Bandhan"),
+                (8, 16, "Janmashtami (Smarta)"),
+                (8, 27, "Ganesh Chaturthi"),
+                (10, 2, "Dussehra (Vijayadashami)"),
+                (10, 20, "Diwali (Deepavali)"),
+                (10, 22, "Bhai Dooj"),
+                (11, 5, "Guru Nanak Jayanti")
+            ],
+            2026: [
+                (3, 4, "Maha Shivratri"),
+                (3, 15, "Holi"),
+                (3, 20, "Eid-ul-Fitr"),
+                (4, 3, "Good Friday"),
+                (8, 28, "Raksha Bandhan"),
+                (9, 4, "Janmashtami (Smarta)"),
+                (9, 14, "Ganesh Chaturthi"),
+                (10, 20, "Dussehra (Vijayadashami)"),
+                (11, 8, "Diwali (Deepavali)"),
+                (11, 9, "Govardhan Puja"),
+                (11, 10, "Bhai Dooj"),
+                (11, 24, "Guru Nanak Jayanti")
+            ],
+            2027: [
+                (3, 7, "Maha Shivratri"),
+                (3, 22, "Holi"),
+                (3, 26, "Good Friday"),
+                (4, 9, "Eid-ul-Fitr"),
+                (8, 17, "Raksha Bandhan"),
+                (8, 25, "Janmashtami (Smarta)"),
+                (9, 5, "Ganesh Chaturthi"),
+                (10, 10, "Dussehra (Vijayadashami)"),
+                (10, 29, "Diwali (Deepavali)"),
+                (10, 31, "Bhai Dooj"),
+                (11, 14, "Guru Nanak Jayanti")
+            ],
+            2028: [
+                (2, 24, "Maha Shivratri"),
+                (3, 11, "Holi"),
+                (4, 14, "Good Friday"),
+                (8, 5, "Raksha Bandhan"),
+                (8, 13, "Janmashtami (Smarta)"),
+                (8, 24, "Ganesh Chaturthi"),
+                (10, 18, "Diwali (Deepavali)"),
+                (11, 2, "Guru Nanak Jayanti")
+            ]
+        ]
+        
+        let festivals = movableTableByYear[year] ?? [
+            // Fallback general dates if queried far into the future/past
+            (3, 15, "Holi"),
+            (8, 25, "Janmashtami (Smarta)"),
+            (9, 10, "Ganesh Chaturthi"),
+            (10, 20, "Dussehra"),
+            (11, 8, "Diwali (Deepavali)")
+        ]
+        
+        for f in festivals {
+            let d = makeDate(year: year, month: f.month, day: f.day)
+            items.append(CalendarEvent(
+                id: UUID(),
+                title: f.name,
+                startDate: d,
+                endDate: d,
                 isAllDay: true,
                 calendarId: "holidays_india",
                 colorHex: emeraldGreen,

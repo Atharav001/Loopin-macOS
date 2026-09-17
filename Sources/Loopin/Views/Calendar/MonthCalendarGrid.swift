@@ -37,20 +37,30 @@ public struct MonthCalendarGrid: View {
         }
     }
     
-    // Generate 35 or 42 days grid for current month
-    private var daysInGrid: [Date] {
+    // Dynamic month grid metrics (precisely calculates 5 or 6 full weeks without truncating days)
+    private var gridMetrics: (days: [Date], rowCount: Int) {
         let cal = calendar
-        guard let monthInterval = cal.dateInterval(of: .month, for: monthDate) else { return [] }
+        guard let monthInterval = cal.dateInterval(of: .month, for: monthDate) else {
+            return ([], 5)
+        }
         
         let startOfMonth = monthInterval.start
-        let weekday = cal.component(.weekday, from: startOfMonth)
+        let endOfMonth = cal.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
         let firstWeekday = cal.firstWeekday
-        
-        let daysToPrepend = (weekday - firstWeekday + 7) % 7
+        let startWeekday = cal.component(.weekday, from: startOfMonth)
+        let daysToPrepend = (startWeekday - firstWeekday + 7) % 7
         let firstCalendarDay = cal.date(byAdding: .day, value: -daysToPrepend, to: startOfMonth) ?? startOfMonth
         
-        // 5 or 6 weeks depending on offset
-        return (0..<35).compactMap { cal.date(byAdding: .day, value: $0, to: firstCalendarDay) }
+        let endWeekday = cal.component(.weekday, from: endOfMonth)
+        let daysToAppend = (firstWeekday - endWeekday + 6) % 7
+        let lastCalendarDay = cal.date(byAdding: .day, value: daysToAppend, to: endOfMonth) ?? endOfMonth
+        
+        let dayCount = cal.dateComponents([.day], from: firstCalendarDay, to: lastCalendarDay).day! + 1
+        let rows = max(5, (dayCount + 6) / 7)
+        let totalCells = rows * 7
+        
+        let allDays = (0..<totalCells).compactMap { cal.date(byAdding: .day, value: $0, to: firstCalendarDay) }
+        return (allDays, rows)
     }
     
     public var body: some View {
@@ -59,7 +69,10 @@ public struct MonthCalendarGrid: View {
             let totalHeight = geo.size.height
             let colWidth = floor(totalWidth / 7.0)
             let headerHeight: CGFloat = 32
-            let rowCount = 5
+            
+            let metrics = gridMetrics
+            let days = metrics.days
+            let rowCount = metrics.rowCount
             let rowHeight = floor((totalHeight - headerHeight) / CGFloat(rowCount))
             
             VStack(spacing: 0) {
@@ -81,8 +94,7 @@ public struct MonthCalendarGrid: View {
                     alignment: .bottom
                 )
                 
-                // 2. Month Grid (5 Rows x 7 Columns)
-                let days = daysInGrid
+                // 2. Month Grid Rows
                 let activeYear = calendar.component(.year, from: monthDate)
                 let visibleEvents = calendarManager.allVisibleEvents(forYear: activeYear)
                 
@@ -112,7 +124,14 @@ public struct MonthCalendarGrid: View {
                                     .gesture(
                                         DragGesture(minimumDistance: 4, coordinateSpace: .named("MonthGridSpace"))
                                             .onChanged { value in
-                                                handleDragChanged(value: value, colWidth: colWidth, rowHeight: rowHeight, headerHeight: headerHeight, days: days)
+                                                handleDragChanged(
+                                                    value: value,
+                                                    colWidth: colWidth,
+                                                    rowHeight: rowHeight,
+                                                    headerHeight: headerHeight,
+                                                    rowCount: rowCount,
+                                                    days: days
+                                                )
                                             }
                                             .onEnded { _ in
                                                 handleDragEnded()
@@ -134,7 +153,7 @@ public struct MonthCalendarGrid: View {
     }
     
     // MARK: - Drag Selection Logic
-    private func handleDragChanged(value: DragGesture.Value, colWidth: CGFloat, rowHeight: CGFloat, headerHeight: CGFloat, days: [Date]) {
+    private func handleDragChanged(value: DragGesture.Value, colWidth: CGFloat, rowHeight: CGFloat, headerHeight: CGFloat, rowCount: Int, days: [Date]) {
         if !isDraggingRange {
             isDraggingRange = true
             let startCol = Int(value.startLocation.x / colWidth)
@@ -146,7 +165,7 @@ public struct MonthCalendarGrid: View {
         }
         
         let currentCol = max(0, min(6, Int(value.location.x / colWidth)))
-        let currentRow = max(0, min(4, Int((value.location.y - headerHeight) / rowHeight)))
+        let currentRow = max(0, min(rowCount - 1, Int((value.location.y - headerHeight) / rowHeight)))
         let currentIndex = currentRow * 7 + currentCol
         if currentIndex >= 0 && currentIndex < days.count {
             dragCurrentDay = days[currentIndex]
@@ -206,7 +225,6 @@ public struct MonthDayCell: View {
     private var dayNumber: Int { cal.component(.day, from: date) }
     
     private var dayLabel: String {
-        // If 1st day of month, show "1 Sept" or "1 Oct" style as in Google Calendar!
         if dayNumber == 1 {
             let f = DateFormatter()
             f.dateFormat = "d MMM"
@@ -307,7 +325,6 @@ public struct EventPillView: View {
                         .truncationMode(.tail)
                         .foregroundColor(Color.white)
                 } else {
-                    // Contiguous spanning bar on middle/end days
                     Text(event.title)
                         .font(.system(size: 10, weight: .medium))
                         .lineLimit(1)
@@ -334,7 +351,7 @@ public struct EventPillView: View {
     }
 }
 
-// Custom Shape for asymmetric corner rounding
+// MARK: - RoundedCornerShape for Multi-day Banners
 public struct RoundedCornerShape: Shape {
     var topLeft: CGFloat = 0
     var bottomLeft: CGFloat = 0
