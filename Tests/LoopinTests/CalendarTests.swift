@@ -94,4 +94,28 @@ final class CalendarTests: XCTestCase {
         manager.deleteEvent(id: event.id)
         XCTAssertFalse(manager.customEvents.contains(where: { $0.id == event.id }))
     }
+    
+    func testHolidayDeduplicationMergesDuplicates() {
+        let cal = Calendar.current
+        let sept4 = cal.date(from: DateComponents(year: 2026, month: 9, day: 4))!
+        
+        let duplicateHolidays = [
+            CalendarEvent(title: "Janmashtami", startDate: sept4, endDate: sept4, isAllDay: true, calendarId: "holidays_india"),
+            CalendarEvent(title: "Janmashtami (Smarta)", startDate: sept4, endDate: sept4, isAllDay: true, calendarId: "holidays_india"),
+            CalendarEvent(title: "★ Janmashtami", startDate: sept4, endDate: sept4, isAllDay: true, calendarId: "holidays_india"),
+            // Timed user tasks on the same day should NOT be deduped
+            CalendarEvent(title: "Linked List -DS -Lovebabbar", startDate: sept4, endDate: sept4, isAllDay: false, calendarId: "mac_calendar"),
+            CalendarEvent(title: "Graph Theory + matrix rep", startDate: sept4, endDate: sept4, isAllDay: false, calendarId: "mac_calendar")
+        ]
+        
+        let deduped = MacCalendarService.shared.deduplicateEvents(duplicateHolidays)
+        
+        // Exactly 1 Janmashtami holiday should remain
+        let holidays = deduped.filter { $0.isAllDay }
+        XCTAssertEqual(holidays.count, 1, "Duplicate Janmashtami holidays on same day should be merged into exactly one")
+        
+        // All timed tasks should be preserved
+        let timed = deduped.filter { !$0.isAllDay }
+        XCTAssertEqual(timed.count, 2, "Timed user tasks should not be removed by holiday deduplication")
+    }
 }

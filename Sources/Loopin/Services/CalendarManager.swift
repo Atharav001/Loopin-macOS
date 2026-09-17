@@ -12,12 +12,13 @@ public final class CalendarManager: ObservableObject {
     @Published public var customEvents: [CalendarEvent] = []
     @Published public var googleEvents: [CalendarEvent] = []
     
-    // Four real, toggleable calendar groups:
+    // Real, toggleable calendar groups:
     // 1. "logged" -> Actual logged entries from app
     // 2. "planned" -> Planned rails / tasks
     // 3. "google" -> Connected Google Calendar
     // 4. "holidays_india" -> Official Indian holidays
-    @Published public var visibleCalendarIds: Set<String> = ["logged", "planned", "google", "holidays_india"] {
+    // 5. "mac_calendar" -> MacBook Calendar App events & tasks
+    @Published public var visibleCalendarIds: Set<String> = ["logged", "planned", "google", "holidays_india", "mac_calendar"] {
         didSet {
             UserDefaults.standard.set(Array(visibleCalendarIds), forKey: visibleCalendarsKey)
         }
@@ -30,6 +31,9 @@ public final class CalendarManager: ObservableObject {
     public init() {
         loadSettings()
         loadEvents()
+        Task {
+            await syncAllCalendars()
+        }
     }
     
     private func loadSettings() {
@@ -160,18 +164,31 @@ public final class CalendarManager: ObservableObject {
             result.append(contentsOf: customGoogle)
         }
         
-        return result
+        // 5. MacBook Calendar App Events & Tasks
+        if visibleCalendarIds.contains("mac_calendar") {
+            result.append(contentsOf: MacCalendarService.shared.macEvents)
+        }
+        
+        // Intelligent Holiday Deduplication: ensure holidays/festivals don't duplicate across calendars
+        return MacCalendarService.shared.deduplicateEvents(result)
     }
     
-    // MARK: - Google Calendar Sync
+    // MARK: - Calendar Sync (Mac Calendar & Google Calendar)
     public func syncWithGoogleCalendar() async {
+        await syncAllCalendars()
+    }
+    
+    public func syncAllCalendars(year: Int = Calendar.current.component(.year, from: Date())) async {
         isSyncing = true
-        syncStatusMessage = "Syncing with Google Calendar..."
+        syncStatusMessage = "Syncing calendars..."
         
-        // Push pending local entries
+        // 1. Sync MacBook Calendar App events & tasks
+        _ = await MacCalendarService.shared.fetchMacEvents(forYear: year)
+        
+        // 2. Push pending local entries to Google Calendar
         await GoogleCalendarService.shared.syncAll()
         
-        // Pull remote events if signed in
+        // 3. Pull Google remote events if signed in
         if AppState.shared.isSignedInWithGoogle {
             let cal = Calendar.current
             let now = Date()
@@ -188,7 +205,7 @@ public final class CalendarManager: ObservableObject {
         
         self.lastSyncDate = Date()
         self.isSyncing = false
-        self.syncStatusMessage = "All calendars up to date"
+        self.syncStatusMessage = "All calendars in sync"
         
         AppState.shared.triggerCelebration()
     }

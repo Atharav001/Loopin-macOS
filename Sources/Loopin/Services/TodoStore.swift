@@ -43,15 +43,16 @@ public final class TodoStore: ObservableObject {
             baseList = items.filter { $0.isCompleted }
         }
         
-        // Starred items float to top among incomplete tasks
+        // First task added stays on top, tasks added at the end stay at the last (FIFO order)
+        // Completed tasks move to the bottom while preserving their relative order
         return baseList.sorted { lhs, rhs in
             if lhs.isCompleted != rhs.isCompleted {
                 return !lhs.isCompleted && rhs.isCompleted
             }
-            if lhs.isStarred != rhs.isStarred {
-                return lhs.isStarred && !rhs.isStarred
+            if lhs.orderIndex != rhs.orderIndex {
+                return lhs.orderIndex < rhs.orderIndex
             }
-            return lhs.orderIndex < rhs.orderIndex
+            return lhs.createdAt < rhs.createdAt
         }
     }
     
@@ -89,17 +90,17 @@ public final class TodoStore: ObservableObject {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
         
-        let minIndex = (items.map { $0.orderIndex }.min() ?? 0) - 1
+        let nextIndex = (items.map { $0.orderIndex }.max() ?? -1) + 1
         let newItem = TodoItem(
             title: trimmed,
             isCompleted: false,
             isStarred: isStarred,
             createdAt: Date(),
-            orderIndex: minIndex
+            orderIndex: nextIndex
         )
         
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            items.insert(newItem, at: 0)
+            items.append(newItem)
         }
         
         SoundManager.shared.play(.click)

@@ -98,4 +98,22 @@ final class TodoStoreTests: XCTestCase {
         XCTAssertEqual(store.totalCount, 1)
         XCTAssertEqual(store.completedCount, 0)
     }
+    
+    func testTaskOrderFirstAddedAtTopLastAddedAtBottom() {
+        // User requirement: "the task added 1st shall be on the top and the task added at the end shall be added at the last"
+        store.addTask(title: "First Added Task")
+        store.addTask(title: "Second Added Task")
+        store.addTask(title: "Third Added Task")
+        store.addTask(title: "Last Added Task")
+        
+        let titles = store.filteredItems.map { $0.title }
+        XCTAssertEqual(titles.first, "First Added Task", "First task added must be at index 0 (top)")
+        XCTAssertEqual(titles.last, "Last Added Task", "Task added last must be at the end of the list")
+        XCTAssertEqual(titles, [
+            "First Added Task",
+            "Second Added Task",
+            "Third Added Task",
+            "Last Added Task"
+        ], "Tasks must strictly follow FIFO chronological addition order")
+    }
 }

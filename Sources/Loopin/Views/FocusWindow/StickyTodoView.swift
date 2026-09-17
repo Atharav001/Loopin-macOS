@@ -341,27 +341,38 @@ public struct StickyTodoView: View {
         let isHovered = hoveredItemId == item.id
         let isEditing = editingItemId == item.id
         
-        return HStack(spacing: 8) {
-            // Checkbox with spring bounce
+        return HStack(spacing: 9) {
+            // Glowing Checkbox with bounce
             Button(action: {
                 store.toggleCompleted(id: item.id)
             }) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 5)
-                        .stroke(
-                            item.isCompleted ? store.paneTheme.accent : Color.white.opacity(0.3),
-                            lineWidth: 1.2
-                        )
-                        .frame(width: 16, height: 16)
-                    
                     if item.isCompleted {
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(store.paneTheme.accent)
-                            .frame(width: 16, height: 16)
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(
+                                LinearGradient(
+                                    colors: [store.paneTheme.accentLight, store.paneTheme.accent],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 17, height: 17)
+                            .shadow(color: store.paneTheme.glowColor, radius: 4)
                         
                         Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .black))
+                            .font(.system(size: 9.5, weight: .black))
                             .foregroundColor(.white)
+                    } else {
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.35), store.paneTheme.accent.opacity(0.25)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.2
+                            )
+                            .frame(width: 17, height: 17)
                     }
                 }
             }
@@ -371,7 +382,7 @@ public struct StickyTodoView: View {
             if isEditing {
                 TextField("Task title", text: $editingText)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 11.5, weight: .medium))
                     .foregroundColor(.white)
                     .focused($isEditFocused)
                     .onSubmit {
@@ -380,9 +391,13 @@ public struct StickyTodoView: View {
                     }
             } else {
                 Text(item.title)
-                    .font(.system(size: 11, weight: item.isStarred ? .semibold : .regular))
-                    .foregroundColor(item.isCompleted ? Color.white.opacity(0.35) : (item.isStarred ? .white : Color.white.opacity(0.9)))
-                    .strikethrough(item.isCompleted, color: Color.white.opacity(0.3))
+                    .font(.system(size: 11.5, weight: item.isStarred ? .semibold : .regular))
+                    .foregroundColor(
+                        item.isCompleted
+                            ? Color.white.opacity(0.35)
+                            : (item.isStarred ? .white : Color.white.opacity(0.92))
+                    )
+                    .strikethrough(item.isCompleted, color: store.paneTheme.accent.opacity(0.6))
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -393,13 +408,23 @@ public struct StickyTodoView: View {
                     }
             }
             
-            // Star Button
+            // Glowing Priority Star Button
             Button(action: {
                 store.toggleStarred(id: item.id)
             }) {
                 Image(systemName: item.isStarred ? "star.fill" : "star")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(item.isStarred ? Color(red: 245/255, green: 158/255, blue: 11/255) : Color.white.opacity(0.2))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(
+                        item.isStarred
+                            ? Color(red: 251/255, green: 191/255, blue: 36/255)
+                            : Color.white.opacity(0.2)
+                    )
+                    .shadow(
+                        color: item.isStarred
+                            ? Color(red: 245/255, green: 158/255, blue: 11/255).opacity(0.65)
+                            : .clear,
+                        radius: 4
+                    )
                     .padding(3)
             }
             .buttonStyle(.plain)
@@ -412,7 +437,7 @@ public struct StickyTodoView: View {
                 }) {
                     Image(systemName: "trash")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(Color.red.opacity(0.75))
+                        .foregroundColor(Color.red.opacity(0.8))
                         .padding(3)
                 }
                 .buttonStyle(.plain)
@@ -425,19 +450,24 @@ public struct StickyTodoView: View {
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(
-                    item.isStarred && !item.isCompleted ?
-                        store.paneTheme.accent.opacity(0.12) :
-                        (isHovered ? store.paneTheme.cardHover : store.paneTheme.cardBg)
+                    item.isStarred && !item.isCompleted
+                        ? store.paneTheme.accent.opacity(0.14)
+                        : (isHovered ? store.paneTheme.cardHover : store.paneTheme.cardBg)
                 )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(
-                    item.isStarred && !item.isCompleted ?
-                        store.paneTheme.accent.opacity(0.4) :
-                        (isHovered ? Color.white.opacity(0.12) : Color.white.opacity(0.04)),
+                    item.isStarred && !item.isCompleted
+                        ? store.paneTheme.accent.opacity(0.45)
+                        : (isHovered ? Color.white.opacity(0.14) : Color.white.opacity(0.05)),
                     lineWidth: 0.8
                 )
+        )
+        .shadow(
+            color: isHovered ? store.paneTheme.glowColor.opacity(0.22) : .clear,
+            radius: 6,
+            y: 1
         )
         .onHover { hovering in
             hoveredItemId = hovering ? item.id : nil
@@ -490,14 +520,15 @@ public struct StickyTodoView: View {
     // MARK: - 5. Footer Bar
     private func footerBar(isCompact: Bool) -> some View {
         VStack(spacing: 0) {
-            // Dynamic Progress Line
+            // Dynamic Glowing Progress Capsule
             GeometryReader { pGeo in
+                let barWidth = max(0, pGeo.size.width * CGFloat(store.progress))
                 ZStack(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.06))
-                        .frame(height: 2)
+                    Capsule()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 3)
                     
-                    Rectangle()
+                    Capsule()
                         .fill(
                             LinearGradient(
                                 colors: [store.paneTheme.accent, store.paneTheme.accentLight],
@@ -505,10 +536,11 @@ public struct StickyTodoView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: max(0, pGeo.size.width * CGFloat(store.progress)), height: 2)
+                        .frame(width: barWidth, height: 3)
+                        .shadow(color: store.paneTheme.glowColor, radius: 4)
                 }
             }
-            .frame(height: 2)
+            .frame(height: 3)
             
             HStack {
                 // Summary text

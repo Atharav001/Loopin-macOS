@@ -1,6 +1,8 @@
 import SwiftUI
 
 public enum CalendarViewMode: String, CaseIterable, Identifiable {
+    case day = "Day"
+    case week = "Week"
     case month = "Month"
     case year = "Year"
     
@@ -11,6 +13,7 @@ public struct CalendarView: View {
     @ObservedObject var appState: AppState = .shared
     @ObservedObject var calendarManager: CalendarManager = .shared
     @ObservedObject var googleAuth: GoogleAuthService = .shared
+    @ObservedObject var macCalendar: MacCalendarService = .shared
     
     @State private var viewMode: CalendarViewMode = .month
     
@@ -40,14 +43,15 @@ public struct CalendarView: View {
                 .transition(.move(edge: .leading).combined(with: .opacity))
             }
             
-            // 2. Main Calendar Canvas with Header Bar
+            // 2. Main Calendar Canvas
             VStack(spacing: 0) {
-                // Top Navigation Bar
-                topNavigationBar
+                // Top Navigation Bar matching macOS Calendar
+                topBar
                 
-                Divider().background(Theme.border)
+                // Subheader with Month Year and < Today > navigation
+                subHeaderBar
                 
-                // Full Canvas Calendar Grid (Month or Year)
+                // Full Canvas Calendar Grid
                 ZStack {
                     switch viewMode {
                     case .month:
@@ -85,12 +89,25 @@ public struct CalendarView: View {
                                 }
                             }
                         )
+                    case .week:
+                        WeekCalendarView()
+                    case .day:
+                        let dayEntries = DatabaseManager.shared.fetchForDay(appState.calendarSelectedDate)
+                        DayColumnView(
+                            date: appState.calendarSelectedDate,
+                            entries: dayEntries,
+                            isToday: cal.isDateInToday(appState.calendarSelectedDate),
+                            onSelectEntry: { entry in
+                                appState.editingEntry = entry
+                                appState.showEntryEditor = true
+                            }
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .background(Theme.bgDeep)
+        .background(Color(red: 27/255, green: 28/255, blue: 30/255))
         .animation(.spring(response: 0.28, dampingFraction: 0.85), value: appState.isCalendarSidebarVisible)
         .sheet(isPresented: $isShowingEditor) {
             CalendarEventEditorSheet(
@@ -102,73 +119,96 @@ public struct CalendarView: View {
         }
     }
     
-    // MARK: - Top Navigation Bar
-    private var topNavigationBar: some View {
-        HStack(spacing: 12) {
-            // Show Calendars Sidebar Button (visible when sidebar is hidden)
-            if !appState.isCalendarSidebarVisible {
-                Button(action: {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
-                        appState.isCalendarSidebarVisible = true
-                    }
-                }) {
-                    Image(systemName: "sidebar.left")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Theme.textSecondary)
-                        .frame(width: 28, height: 28)
-                        .background(Theme.bgSubtle)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Theme.border, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
-                .help("Show Calendars Panel")
-            }
-            
-            // "Today" Button
+    // MARK: - Top Bar (matching uploaded screenshot: + on left, Day|Week|Month|Year in middle, search on right)
+    private var topBar: some View {
+        HStack {
+            // Far Left: Circular "+" Button
             Button(action: {
-                withAnimation {
-                    appState.calendarSelectedDate = Date()
-                }
+                selectedEventForEdit = nil
+                draftRangeStart = appState.calendarSelectedDate
+                draftRangeEnd = appState.calendarSelectedDate
+                isShowingEditor = true
             }) {
-                Text("Today")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Theme.textPrimary)
-                    .padding(.horizontal, 12)
-                    .frame(height: 28)
-                    .background(Theme.bgSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                Image(systemName: "plus")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color(white: 0.85))
+                    .frame(width: 28, height: 28)
+                    .background(Color(white: 0.16))
+                    .clipShape(Circle())
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Theme.border, lineWidth: 1)
+                        Circle()
+                            .stroke(Color(white: 0.25), lineWidth: 0.8)
                     )
             }
             .buttonStyle(.plain)
+            .help("New Event (+)")
             
-            // Navigation chevrons `<` `>`
+            Spacer()
+            
+            // Center: Segmented Capsule Control (Day | Week | Month | Year)
             HStack(spacing: 2) {
-                Button(action: { navigateDate(by: -1) }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Theme.textSecondary)
-                        .frame(width: 26, height: 28)
+                ForEach(CalendarViewMode.allCases) { mode in
+                    let isSelected = viewMode == mode
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            viewMode = mode
+                        }
+                    }) {
+                        Text(mode.rawValue)
+                            .font(.system(size: 11.5, weight: isSelected ? .semibold : .medium))
+                            .foregroundColor(isSelected ? .white : Color(white: 0.6))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 4)
+                            .background(
+                                isSelected ? Color(white: 0.28) : Color.clear
+                            )
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                
-                Button(action: { navigateDate(by: 1) }) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Theme.textSecondary)
-                        .frame(width: 26, height: 28)
-                }
-                .buttonStyle(.plain)
             }
+            .padding(2)
+            .background(Color(white: 0.12))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color(white: 0.22), lineWidth: 0.8)
+            )
             
-            // Main Month/Year Title with Direct Quick Jump Menu
+            Spacer()
+            
+            // Far Right: Circular Search Button
+            Button(action: {
+                // Toggle sidebar or quick search
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                    appState.isCalendarSidebarVisible.toggle()
+                }
+            }) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(white: 0.85))
+                    .frame(width: 28, height: 28)
+                    .background(Color(white: 0.16))
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color(white: 0.25), lineWidth: 0.8)
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Search & Calendars")
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
+        .background(Color(red: 25/255, green: 26/255, blue: 28/255))
+    }
+    
+    // MARK: - Subheader Bar (Month Year on left, < Today > on right)
+    private var subHeaderBar: some View {
+        HStack {
+            // Left: Large Month & Year Title
             Menu {
-                // Quick jump to Years
                 Section("Select Year") {
                     ForEach([2024, 2025, 2026, 2027, 2028, 2029, 2030], id: \.self) { yr in
                         Button(action: { jumpToYear(yr) }) {
@@ -177,127 +217,103 @@ public struct CalendarView: View {
                     }
                 }
                 
-                // Quick jump to Months
-                if viewMode == .month {
-                    Section("Select Month") {
-                        ForEach(1...12, id: \.self) { m in
-                            Button(action: { jumpToMonth(m) }) {
-                                Text(monthNameFor(m))
-                            }
+                Section("Select Month") {
+                    ForEach(1...12, id: \.self) { m in
+                        Button(action: { jumpToMonth(m) }) {
+                            Text(monthNameFor(m))
                         }
                     }
                 }
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Text(currentFormattedHeaderTitle)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(Theme.textPrimary)
+                        .font(.system(size: 24, weight: .bold, design: .default))
+                        .foregroundColor(Color(white: 0.94))
                     
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(Theme.textMuted)
+                        .foregroundColor(Color(white: 0.45))
                 }
             }
             .menuStyle(.borderlessButton)
             
-            // "+ New Event" Button
-            Button(action: {
-                selectedEventForEdit = nil
-                draftRangeStart = appState.calendarSelectedDate
-                draftRangeEnd = appState.calendarSelectedDate
-                isShowingEditor = true
-            }) {
-                HStack(spacing: 5) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 11, weight: .bold))
-                    Text("New Event")
-                        .font(.system(size: 11.5, weight: .semibold))
-                }
-                .foregroundColor(Theme.accent)
-                .padding(.horizontal, 10)
-                .frame(height: 28)
-                .background(Theme.accent.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Theme.accent.opacity(0.25), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            
             Spacer()
             
-            // Sync Button
-            Button(action: {
-                Task {
-                    await calendarManager.syncWithGoogleCalendar()
+            // Right: Sync & Navigation controls
+            HStack(spacing: 10) {
+                // Sync button
+                Button(action: {
+                    Task {
+                        await calendarManager.syncAllCalendars(year: cal.component(.year, from: appState.calendarSelectedDate))
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 10, weight: .semibold))
+                            .rotationEffect(.degrees(calendarManager.isSyncing ? 360 : 0))
+                            .animation(calendarManager.isSyncing ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: calendarManager.isSyncing)
+                        
+                        Text(calendarManager.isSyncing ? "Syncing..." : "Sync")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(Color(white: 0.75))
+                    .padding(.horizontal, 9)
+                    .frame(height: 24)
+                    .background(Color(white: 0.14))
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule().stroke(Color(white: 0.22), lineWidth: 0.8)
+                    )
                 }
-            }) {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 11, weight: .bold))
-                        .rotationEffect(.degrees(calendarManager.isSyncing ? 360 : 0))
-                        .animation(calendarManager.isSyncing ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: calendarManager.isSyncing)
+                .buttonStyle(.plain)
+                .help("Sync Mac & Google Calendars")
+                
+                // < Today > Navigation Group
+                HStack(spacing: 1) {
+                    Button(action: { navigateDate(by: -1) }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color(white: 0.75))
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
                     
-                    Text(calendarManager.isSyncing ? "Syncing..." : "Sync")
-                        .font(.system(size: 11.5, weight: .medium))
-                }
-                .foregroundColor(calendarManager.isSyncing ? Theme.accentLight : Theme.textPrimary)
-                .padding(.horizontal, 10)
-                .frame(height: 28)
-                .background(Theme.bgSubtle)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Theme.border, lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            .help("Sync events with Google Calendar")
-            
-            // View Mode Segmented Switcher (Month / Year)
-            Picker("", selection: $viewMode) {
-                ForEach(CalendarViewMode.allCases) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 130)
-            
-            // Google Account Pill
-            Button(action: {
-                appState.selectedTab = .account
-            }) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(appState.isSignedInWithGoogle ? Theme.productive : Theme.accent)
-                        .frame(width: 7, height: 7)
+                    Button(action: {
+                        withAnimation {
+                            appState.calendarSelectedDate = Date()
+                        }
+                    }) {
+                        Text("Today")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundColor(Color(white: 0.9))
+                            .padding(.horizontal, 8)
+                            .frame(height: 24)
+                    }
+                    .buttonStyle(.plain)
                     
-                    Text(appState.googleUserEmail.isEmpty ? "atharavnarang05@gmail.com" : appState.googleUserEmail)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Theme.textPrimary)
-                        .lineLimit(1)
+                    Button(action: { navigateDate(by: 1) }) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color(white: 0.75))
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 10)
-                .frame(height: 28)
-                .background(Theme.bgSubtle)
+                .background(Color(white: 0.14))
                 .clipShape(Capsule())
                 .overlay(
-                    Capsule()
-                        .stroke(Theme.border, lineWidth: 1)
+                    Capsule().stroke(Color(white: 0.22), lineWidth: 0.8)
                 )
             }
-            .buttonStyle(.plain)
-            .help("Google Calendar Account: \(appState.googleUserEmail)")
         }
         .padding(.horizontal, 16)
-        .frame(height: 48)
-        .background(Theme.bgDark)
+        .padding(.bottom, 10)
+        .background(Color(red: 25/255, green: 26/255, blue: 28/255))
     }
     
     private var currentFormattedHeaderTitle: String {
         let f = DateFormatter()
-        if viewMode == .month {
+        if viewMode == .month || viewMode == .week || viewMode == .day {
             f.dateFormat = "MMMM yyyy"
         } else {
             f.dateFormat = "yyyy"
@@ -305,7 +321,7 @@ public struct CalendarView: View {
         return f.string(from: appState.calendarSelectedDate)
     }
     
-    // MARK: - Exact Year/Month Specific Navigation
+    // MARK: - Navigation helpers
     private func navigateDate(by delta: Int) {
         withAnimation(.easeInOut(duration: 0.15)) {
             if viewMode == .month {
@@ -313,6 +329,14 @@ public struct CalendarView: View {
                 comps.day = 1
                 if let firstOfMonth = cal.date(from: comps),
                    let next = cal.date(byAdding: .month, value: delta, to: firstOfMonth) {
+                    appState.calendarSelectedDate = next
+                }
+            } else if viewMode == .week {
+                if let next = cal.date(byAdding: .weekOfYear, value: delta, to: appState.calendarSelectedDate) {
+                    appState.calendarSelectedDate = next
+                }
+            } else if viewMode == .day {
+                if let next = cal.date(byAdding: .day, value: delta, to: appState.calendarSelectedDate) {
                     appState.calendarSelectedDate = next
                 }
             } else {

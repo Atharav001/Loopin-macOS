@@ -104,6 +104,21 @@ public struct CalendarSidebarDrawer: View {
                     
                     // 4. My Calendars Section (Google & Loopin)
                     VStack(alignment: .leading, spacing: 14) {
+                        // MacBook Calendar Section
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("MACBOOK CALENDAR")
+                                .font(.system(size: 9.5, weight: .bold))
+                                .foregroundColor(Theme.textMuted)
+                                .tracking(0.6)
+                                .padding(.horizontal, 14)
+                            
+                            calendarToggleRow(
+                                id: "mac_calendar",
+                                title: "Mac Calendar & Tasks",
+                                color: Color(red: 59/255, green: 130/255, blue: 246/255) // Blue
+                            )
+                        }
+                        
                         // Google Section
                         VStack(alignment: .leading, spacing: 4) {
                             Text("GOOGLE")

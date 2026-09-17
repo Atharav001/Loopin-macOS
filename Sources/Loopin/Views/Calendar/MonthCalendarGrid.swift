@@ -35,9 +35,9 @@ public struct MonthCalendarGrid: View {
     
     private var weekdaySymbols: [String] {
         if appState.weekStartsOnMonday {
-            return ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+            return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         } else {
-            return ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+            return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         }
     }
     
@@ -72,7 +72,7 @@ public struct MonthCalendarGrid: View {
             let totalWidth = geo.size.width
             let totalHeight = geo.size.height
             let colWidth = floor(totalWidth / 7.0)
-            let headerHeight: CGFloat = 30
+            let headerHeight: CGFloat = 26
             
             let metrics = gridMetrics
             let days = metrics.days
@@ -86,20 +86,20 @@ public struct MonthCalendarGrid: View {
                 }
                 
                 VStack(spacing: 0) {
-                    // 1. Weekday Column Headers
+                    // 1. Weekday Column Headers (Right-aligned matching macOS Calendar)
                     HStack(spacing: 0) {
                         ForEach(0..<7, id: \.self) { col in
                             Text(weekdaySymbols[col])
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Theme.textMuted)
-                                .tracking(0.6)
-                                .frame(width: colWidth, height: headerHeight)
+                                .font(.system(size: 11.5, weight: .medium))
+                                .foregroundColor(Color(white: 0.58))
+                                .frame(width: colWidth, height: headerHeight, alignment: .trailing)
+                                .padding(.trailing, 10)
                         }
                     }
-                    .background(Theme.bgDark.opacity(0.4))
+                    .background(Color(red: 25/255, green: 26/255, blue: 28/255))
                     .overlay(
                         Rectangle()
-                            .fill(Theme.border)
+                            .fill(Color(white: 0.17))
                             .frame(height: 1),
                         alignment: .bottom
                     )
@@ -152,7 +152,9 @@ public struct MonthCalendarGrid: View {
                             }
                             
                             if row < rowCount - 1 {
-                                Divider().background(Theme.border)
+                                Rectangle()
+                                    .fill(Color(white: 0.17))
+                                    .frame(height: 1)
                             }
                         }
                     }
@@ -160,7 +162,7 @@ public struct MonthCalendarGrid: View {
             }
             .coordinateSpace(name: "MonthGridSpace")
         }
-        .background(Theme.bgDeep)
+        .background(Color(red: 27/255, green: 28/255, blue: 30/255))
     }
     
     // MARK: - Drag Selection Logic
@@ -207,10 +209,18 @@ public struct MonthCalendarGrid: View {
         let cal = calendar
         let targetDayStart = cal.startOfDay(for: day)
         
-        return allEvents.filter { event in
+        let matched = allEvents.filter { event in
             let eventStartDay = cal.startOfDay(for: event.startDate)
             let eventEndDay = cal.startOfDay(for: event.endDate)
             return targetDayStart >= eventStartDay && targetDayStart <= eventEndDay
+        }
+        
+        // Sort: All-day / holidays first, then timed events sorted by start time
+        return matched.sorted { lhs, rhs in
+            if lhs.isAllDay != rhs.isAllDay {
+                return lhs.isAllDay && !rhs.isAllDay
+            }
+            return lhs.startDate < rhs.startDate
         }
     }
 }
@@ -246,70 +256,82 @@ public struct MonthDayCell: View {
     
     public var body: some View {
         ZStack(alignment: .topLeading) {
-            // Background Canvas (Dimmer if outside of active month)
+            // Background Canvas
             Rectangle()
                 .fill(
                     isSelectedRange
-                        ? Theme.accent.opacity(0.18)
-                        : (isHovered ? Theme.bgSubtle : (isCurrentMonth ? Theme.bgDeep : Theme.bgDeep.opacity(0.55)))
+                        ? Color.blue.opacity(0.18)
+                        : (isHovered
+                           ? Color(white: 0.15)
+                           : (isCurrentMonth ? Color(red: 27/255, green: 28/255, blue: 30/255) : Color(red: 23/255, green: 24/255, blue: 25/255)))
                 )
             
-            // Vertical Right Border
+            // Vertical Right Grid Line
             Rectangle()
-                .fill(isCurrentMonth ? Theme.border : Theme.border.opacity(0.5))
+                .fill(Color(white: 0.17))
                 .frame(width: 1)
                 .frame(maxWidth: .infinity, alignment: .trailing)
             
-            VStack(alignment: .leading, spacing: 3) {
-                // Day Number Pill / Header
+            VStack(spacing: 2) {
+                // Day Number at TOP RIGHT matching macOS Calendar
                 HStack {
+                    Spacer()
                     if isToday {
-                        Text(dayLabel)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(Color(red: 235/255, green: 59/255, blue: 50/255)) // Red badge matching screenshot
-                            .clipShape(Capsule())
+                        // Red circular badge with bold white text
+                        ZStack {
+                            Circle()
+                                .fill(Color(red: 232/255, green: 38/255, blue: 38/255))
+                                .frame(width: 20, height: 20)
+                            
+                            Text("\(dayNumber)")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.top, 4)
+                        .padding(.trailing, 6)
                     } else {
                         Text(dayLabel)
-                            .font(.system(size: 11, weight: dayNumber == 1 ? .bold : (isCurrentMonth ? .semibold : .regular)))
-                            // Faded color for days of preceding and succeeding months!
+                            .font(.system(size: 11, weight: dayNumber == 1 ? .semibold : .regular))
                             .foregroundColor(
                                 isCurrentMonth
-                                    ? Theme.textPrimary
-                                    : Theme.textMuted.opacity(0.35)
+                                    ? Color(white: 0.82)
+                                    : Color(white: 0.38)
                             )
-                            .padding(.leading, 6)
                             .padding(.top, 4)
-                    }
-                    
-                    Spacer()
-                }
-                .padding(.top, 4)
-                .padding(.trailing, 4)
-                
-                // Event Bars Container
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(events.prefix(3)) { event in
-                        EventPillView(
-                            event: event,
-                            date: date,
-                            isDimmed: !isCurrentMonth,
-                            onTap: { onSelectEvent(event) }
-                        )
-                    }
-                    
-                    if events.count > 3 {
-                        Text("+\(events.count - 3) more")
-                            .font(.system(size: 9.5, weight: .semibold))
-                            .foregroundColor(isCurrentMonth ? Theme.textMuted : Theme.textMuted.opacity(0.35))
-                            .padding(.leading, 6)
-                            .padding(.top, 1)
+                            .padding(.trailing, 8)
                     }
                 }
                 
-                Spacer()
+                // Events Container
+                VStack(spacing: 1.5) {
+                    ForEach(events.prefix(4)) { event in
+                        if event.isAllDay || event.calendarId == "holidays_india" {
+                            // All-Day / Holiday Pill Banner
+                            HolidayPillView(event: event, isDimmed: !isCurrentMonth) {
+                                onSelectEvent(event)
+                            }
+                        } else {
+                            // Timed Event / Task Row with vertical color bar
+                            TimedEventRowView(event: event, isDimmed: !isCurrentMonth) {
+                                onSelectEvent(event)
+                            }
+                        }
+                    }
+                    
+                    if events.count > 4 {
+                        HStack {
+                            Text("+\(events.count - 4) more")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(isCurrentMonth ? Color(white: 0.6) : Color(white: 0.35))
+                            Spacer()
+                        }
+                        .padding(.leading, 6)
+                        .padding(.top, 1)
+                    }
+                }
+                .padding(.horizontal, 2)
+                
+                Spacer(minLength: 0)
             }
         }
         .onHover { hovering in
@@ -321,51 +343,128 @@ public struct MonthDayCell: View {
     }
 }
 
-// MARK: - EventPillView
-public struct EventPillView: View {
+// MARK: - HolidayPillView (Full Width Pill matching screenshot)
+public struct HolidayPillView: View {
     var event: CalendarEvent
-    var date: Date
     var isDimmed: Bool = false
     var onTap: () -> Void
     
-    private var cal: Calendar { Calendar.current }
-    private var isStart: Bool { cal.isDate(event.startDate, inSameDayAs: date) }
-    private var isEnd: Bool { cal.isDate(event.endDate, inSameDayAs: date) }
-    private var isMultiDay: Bool { event.isMultiDay }
+    private var holidayStyle: (bg: Color, text: Color, iconName: String, iconColor: Color) {
+        let lower = event.title.lowercased()
+        
+        if lower.contains("labor") || lower.contains("labour") {
+            // Wine Red Labor Day Pill
+            return (
+                bg: Color(red: 88/255, green: 32/255, blue: 38/255),
+                text: Color(red: 254/255, green: 205/255, blue: 211/255),
+                iconName: "calendar",
+                iconColor: Color(red: 239/255, green: 68/255, blue: 68/255)
+            )
+        } else if lower.contains("star") || lower.contains("chaturthi") && event.notes?.contains("star") == true {
+            // Warm Amber / Orange with Star
+            return (
+                bg: Color(red: 84/255, green: 56/255, blue: 26/255),
+                text: Color(red: 254/255, green: 240/255, blue: 180/255),
+                iconName: "star.fill",
+                iconColor: Color(red: 245/255, green: 158/255, blue: 11/255)
+            )
+        } else if lower.contains("gandhi") || lower.contains("janmashtami") || lower.contains("ganesh") {
+            // Muted Teal / Sage Festival Pill
+            return (
+                bg: Color(red: 44/255, green: 71/255, blue: 64/255),
+                text: Color(red: 204/255, green: 251/255, blue: 241/255),
+                iconName: "calendar",
+                iconColor: Color(red: 52/255, green: 211/255, blue: 153/255)
+            )
+        } else {
+            // Default elegant dark pill
+            return (
+                bg: Color(red: 38/255, green: 42/255, blue: 48/255),
+                text: Color(white: 0.9),
+                iconName: "calendar",
+                iconColor: event.color
+            )
+        }
+    }
+    
+    public var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 3.5) {
+                // Left small icon
+                Image(systemName: holidayStyle.iconName)
+                    .font(.system(size: 7.5, weight: .bold))
+                    .foregroundColor(holidayStyle.iconColor.opacity(isDimmed ? 0.5 : 1.0))
+                
+                Text(event.title)
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundColor(holidayStyle.text.opacity(isDimmed ? 0.5 : 1.0))
+                
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 5)
+            .frame(height: 17)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(holidayStyle.bg.opacity(isDimmed ? 0.45 : 1.0))
+            )
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 2)
+    }
+}
+
+// MARK: - TimedEventRowView (Vertical accent strip + title + time on right)
+public struct TimedEventRowView: View {
+    var event: CalendarEvent
+    var isDimmed: Bool = false
+    var onTap: () -> Void
+    
+    @State private var isHovered: Bool = false
+    
+    private var timeFormatted: String {
+        let f = DateFormatter()
+        f.dateFormat = "h a"
+        return f.string(from: event.startDate)
+    }
     
     public var body: some View {
         Button(action: onTap) {
             HStack(spacing: 4) {
-                if isStart || !isMultiDay {
-                    Text(event.title)
-                        .font(.system(size: 10, weight: .semibold))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .foregroundColor(Color.white.opacity(isDimmed ? 0.6 : 1.0))
-                } else {
-                    Text(event.title)
-                        .font(.system(size: 10, weight: .medium))
-                        .lineLimit(1)
-                        .opacity(isDimmed ? 0.45 : 0.85)
-                        .foregroundColor(Color.white)
-                }
-                Spacer(minLength: 0)
+                // Vertical accent bar (Yellow, Purple, etc.)
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(event.color.opacity(isDimmed ? 0.5 : 1.0))
+                    .frame(width: 3.5, height: 11)
+                
+                // Event Title
+                Text(event.title)
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundColor(Color(white: isDimmed ? 0.5 : 0.92))
+                
+                Spacer(minLength: 2)
+                
+                // Event Time on Right (e.g. "9 AM", "10 AM")
+                Text(timeFormatted)
+                    .font(.system(size: 8.5, weight: .medium))
+                    .foregroundColor(Color(white: isDimmed ? 0.35 : 0.55))
+                    .lineLimit(1)
             }
-            .padding(.horizontal, 6)
-            .frame(height: 19)
-            .background(event.color.opacity(isDimmed ? 0.45 : 1.0))
-            .clipShape(
-                RoundedCornerShape(
-                    topLeft: isStart || !isMultiDay ? 4 : 0,
-                    bottomLeft: isStart || !isMultiDay ? 4 : 0,
-                    bottomRight: isEnd || !isMultiDay ? 4 : 0,
-                    topRight: isEnd || !isMultiDay ? 4 : 0
-                )
+            .padding(.horizontal, 3)
+            .padding(.vertical, 1)
+            .frame(height: 16)
+            .background(
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(isHovered ? Color.white.opacity(0.06) : Color.clear)
             )
-            .shadow(color: Color.black.opacity(isDimmed ? 0.05 : 0.1), radius: 1, y: 0.5)
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 2)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
 
@@ -388,7 +487,6 @@ struct MonthScrollWheelOverlay: NSViewRepresentable {
         private var lastScrollTime: TimeInterval = 0
         
         override func hitTest(_ point: NSPoint) -> NSView? {
-            // Transparent to clicks so day cells receive all click & drag gestures
             return nil
         }
         
@@ -404,44 +502,5 @@ struct MonthScrollWheelOverlay: NSViewRepresentable {
                 onScroll?(-1)
             }
         }
-    }
-}
-
-// MARK: - RoundedCornerShape for Multi-day Banners
-public struct RoundedCornerShape: Shape {
-    var topLeft: CGFloat = 0
-    var bottomLeft: CGFloat = 0
-    var bottomRight: CGFloat = 0
-    var topRight: CGFloat = 0
-
-    public func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let w = rect.size.width
-        let h = rect.size.height
-
-        let tr = min(min(self.topRight, h/2), w/2)
-        let tl = min(min(self.topLeft, h/2), w/2)
-        let bl = min(min(self.bottomLeft, h/2), w/2)
-        let br = min(min(self.bottomRight, h/2), w/2)
-
-        path.move(to: CGPoint(x: w / 2.0, y: 0))
-        path.addLine(to: CGPoint(x: w - tr, y: 0))
-        path.addArc(center: CGPoint(x: w - tr, y: tr), radius: tr,
-                    startAngle: Angle(degrees: -90), endAngle: Angle(degrees: 0), clockwise: false)
-
-        path.addLine(to: CGPoint(x: w, y: h - br))
-        path.addArc(center: CGPoint(x: w - br, y: h - br), radius: br,
-                    startAngle: Angle(degrees: 0), endAngle: Angle(degrees: 90), clockwise: false)
-
-        path.addLine(to: CGPoint(x: bl, y: h))
-        path.addArc(center: CGPoint(x: bl, y: h - bl), radius: bl,
-                    startAngle: Angle(degrees: 90), endAngle: Angle(degrees: 180), clockwise: false)
-
-        path.addLine(to: CGPoint(x: 0, y: tl))
-        path.addArc(center: CGPoint(x: tl, y: tl), radius: tl,
-                    startAngle: Angle(degrees: 180), endAngle: Angle(degrees: 270), clockwise: false)
-        path.closeSubpath()
-
-        return path
     }
 }

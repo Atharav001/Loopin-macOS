@@ -54,6 +54,10 @@ cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
     <string>Logtrackin uses on-device speech recognition to let you log your activities by voice.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Logtrackin uses your microphone for voice activity logging.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Loopin syncs your Apple Calendar events and tasks to display on your calendar grid.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Loopin syncs your Apple Calendar events and tasks to display on your calendar grid.</string>
 </dict>
 </plist>
 EOF
