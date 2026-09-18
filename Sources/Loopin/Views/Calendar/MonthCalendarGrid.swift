@@ -29,16 +29,12 @@ public struct MonthCalendarGrid: View {
     
     private var calendar: Calendar {
         var cal = Calendar.current
-        cal.firstWeekday = appState.weekStartsOnMonday ? 2 : 1
+        cal.firstWeekday = 1 // Sunday is always the 1st day of the week
         return cal
     }
     
     private var weekdaySymbols: [String] {
-        if appState.weekStartsOnMonday {
-            return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        } else {
-            return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-        }
+        return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     }
     
     // Dynamic month grid metrics (completes week with preceding & succeeding days)
@@ -273,9 +269,31 @@ public struct MonthDayCell: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
             
             VStack(spacing: 2) {
-                // Day Number at TOP RIGHT matching macOS Calendar
-                HStack {
+                // Day Header: Left Hover Action (+) & Right Date Number
+                HStack(alignment: .center) {
+                    if isHovered {
+                        Menu {
+                            Button(action: onDayTapped) {
+                                Label("Add Event...", systemImage: "plus")
+                            }
+                            Button(action: { attachDocumentToDay() }) {
+                                Label("Attach File / Text Doc for Reference...", systemImage: "paperclip")
+                            }
+                            Button(action: { addReferenceNoteToDay() }) {
+                                Label("Add Reference Note...", systemImage: "doc.text")
+                            }
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(white: 0.65))
+                        }
+                        .menuStyle(.borderlessButton)
+                        .padding(.leading, 6)
+                        .padding(.top, 4)
+                    }
+                    
                     Spacer()
+                    
                     if isToday {
                         // Red circular badge with bold white text
                         ZStack {
@@ -291,11 +309,11 @@ public struct MonthDayCell: View {
                         .padding(.trailing, 6)
                     } else {
                         Text(dayLabel)
-                            .font(.system(size: 11, weight: dayNumber == 1 ? .semibold : .regular))
+                            .font(.system(size: 11.5, weight: dayNumber == 1 ? .bold : (isCurrentMonth ? .semibold : .medium)))
                             .foregroundColor(
                                 isCurrentMonth
-                                    ? Color(white: 0.82)
-                                    : Color(white: 0.38)
+                                    ? Color(white: 0.92)
+                                    : Color(white: 0.60) // Clearly visible date numbers for all days!
                             )
                             .padding(.top, 4)
                             .padding(.trailing, 8)
@@ -305,7 +323,12 @@ public struct MonthDayCell: View {
                 // Events Container
                 VStack(spacing: 1.5) {
                     ForEach(events.prefix(4)) { event in
-                        if event.isAllDay || event.calendarId == "holidays_india" {
+                        if event.isDocumentReference || event.documentPath != nil {
+                            // Document / Text Doc Reference Pill on Calendar
+                            DocumentReferencePillView(event: event, isDimmed: !isCurrentMonth) {
+                                onSelectEvent(event)
+                            }
+                        } else if event.isAllDay || event.calendarId == "holidays_india" {
                             // All-Day / Holiday Pill Banner
                             HolidayPillView(event: event, isDimmed: !isCurrentMonth) {
                                 onSelectEvent(event)
@@ -322,7 +345,7 @@ public struct MonthDayCell: View {
                         HStack {
                             Text("+\(events.count - 4) more")
                                 .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(isCurrentMonth ? Color(white: 0.6) : Color(white: 0.35))
+                                .foregroundColor(isCurrentMonth ? Color(white: 0.6) : Color(white: 0.4))
                             Spacer()
                         }
                         .padding(.leading, 6)
@@ -340,6 +363,59 @@ public struct MonthDayCell: View {
         .onTapGesture {
             onDayTapped()
         }
+        .contextMenu {
+            Button(action: onDayTapped) {
+                Label("Add Event...", systemImage: "plus")
+            }
+            Button(action: { attachDocumentToDay() }) {
+                Label("Attach File / Text Doc for Reference...", systemImage: "paperclip")
+            }
+            Button(action: { addReferenceNoteToDay() }) {
+                Label("Add Reference Note...", systemImage: "doc.text")
+            }
+        }
+    }
+    
+    private func attachDocumentToDay() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.prompt = "Attach File"
+        if panel.runModal() == .OK, let url = panel.url {
+            let cal = Calendar.current
+            let start = cal.startOfDay(for: date)
+            let end = cal.date(bySettingHour: 23, minute: 59, second: 59, of: date) ?? date
+            let refEvent = CalendarEvent(
+                title: url.deletingPathExtension().lastPathComponent,
+                startDate: start,
+                endDate: end,
+                isAllDay: true,
+                calendarId: "planned",
+                colorHex: "#38BDF8",
+                notes: "Attached document reference",
+                documentPath: url.path,
+                isDocumentReference: true
+            )
+            CalendarManager.shared.addEvent(refEvent)
+        }
+    }
+    
+    private func addReferenceNoteToDay() {
+        let cal = Calendar.current
+        let start = cal.startOfDay(for: date)
+        let end = cal.date(bySettingHour: 23, minute: 59, second: 59, of: date) ?? date
+        let refEvent = CalendarEvent(
+            title: "Reference Note",
+            startDate: start,
+            endDate: end,
+            isAllDay: true,
+            calendarId: "planned",
+            colorHex: "#F59E0B",
+            notes: "",
+            isDocumentReference: true
+        )
+        onSelectEvent(refEvent)
     }
 }
 
@@ -415,6 +491,56 @@ public struct HolidayPillView: View {
     }
 }
 
+// MARK: - DocumentReferencePillView (Text doc or file reference placed on calendar)
+public struct DocumentReferencePillView: View {
+    var event: CalendarEvent
+    var isDimmed: Bool = false
+    var onTap: () -> Void
+    
+    public var body: some View {
+        Button(action: {
+            if let path = event.documentPath, !path.isEmpty, FileManager.default.fileExists(atPath: path) {
+                NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            } else if let link = event.linkUrl, let url = URL(string: link), url.scheme != nil {
+                NSWorkspace.shared.open(url)
+            } else {
+                onTap()
+            }
+        }) {
+            HStack(spacing: 3.5) {
+                Image(systemName: event.documentPath != nil ? "doc.text.fill" : "paperclip")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(Color(red: 56/255, green: 189/255, blue: 248/255))
+                
+                Text(event.title)
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundColor(Color(red: 224/255, green: 242/255, blue: 254/255).opacity(isDimmed ? 0.5 : 1.0))
+                
+                Spacer(minLength: 0)
+                
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 6.5, weight: .bold))
+                    .foregroundColor(Color(red: 56/255, green: 189/255, blue: 248/255).opacity(isDimmed ? 0.4 : 0.8))
+            }
+            .padding(.horizontal, 5)
+            .frame(height: 17)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color(red: 16/255, green: 37/255, blue: 55/255).opacity(isDimmed ? 0.45 : 1.0))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color(red: 56/255, green: 189/255, blue: 248/255).opacity(0.35), lineWidth: 0.8)
+            )
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 2)
+        .help(event.documentPath ?? event.linkUrl ?? event.title)
+    }
+}
+
 // MARK: - TimedEventRowView (Vertical accent strip + title + time on right)
 public struct TimedEventRowView: View {
     var event: CalendarEvent
@@ -443,6 +569,17 @@ public struct TimedEventRowView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundColor(Color(white: isDimmed ? 0.5 : 0.92))
+                
+                // Link or Document badge indicator
+                if event.documentPath != nil {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 7.5))
+                        .foregroundColor(Color(red: 56/255, green: 189/255, blue: 248/255))
+                } else if event.linkUrl != nil {
+                    Image(systemName: "link")
+                        .font(.system(size: 7.5))
+                        .foregroundColor(Color(red: 147/255, green: 197/255, blue: 253/255))
+                }
                 
                 Spacer(minLength: 2)
                 

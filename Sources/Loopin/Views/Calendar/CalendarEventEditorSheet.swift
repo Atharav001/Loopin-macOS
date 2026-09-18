@@ -18,6 +18,9 @@ public struct CalendarEventEditorSheet: View {
     @State private var selectedColorHex: String = "#0288EB"
     @State private var location: String = ""
     @State private var notes: String = ""
+    @State private var linkUrl: String = ""
+    @State private var documentPath: String = ""
+    @State private var isDocumentReference: Bool = false
     @State private var showDeleteConfirmation: Bool = false
     
     private let availableColors: [String] = [
@@ -201,7 +204,7 @@ public struct CalendarEventEditorSheet: View {
                         
                         TextEditor(text: $notes)
                             .font(.system(size: 12))
-                            .frame(height: 60)
+                            .frame(height: 55)
                             .padding(6)
                             .background(Theme.bgSubtle)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -210,6 +213,137 @@ public struct CalendarEventEditorSheet: View {
                                     .stroke(Theme.border, lineWidth: 1)
                             )
                     }
+                    
+                    // Link / URL Section
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("LINK / URL")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(Theme.textMuted)
+                                .tracking(0.6)
+                            
+                            Spacer()
+                            
+                            if let url = URL(string: linkUrl.trimmingCharacters(in: .whitespacesAndNewlines)),
+                               url.scheme != nil {
+                                Button(action: {
+                                    NSWorkspace.shared.open(url)
+                                }) {
+                                    HStack(spacing: 3) {
+                                        Text("Open Link")
+                                            .font(.system(size: 10, weight: .semibold))
+                                        Image(systemName: "arrow.up.right.square")
+                                            .font(.system(size: 9))
+                                    }
+                                    .foregroundColor(Theme.accent)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        
+                        HStack(spacing: 6) {
+                            Image(systemName: "link")
+                                .font(.system(size: 11))
+                                .foregroundColor(Theme.textMuted)
+                            
+                            TextField("https://example.com or meeting link", text: $linkUrl)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 12.5))
+                        }
+                        .padding(8)
+                        .background(Theme.bgSubtle)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Theme.border, lineWidth: 1)
+                        )
+                    }
+                    
+                    // Document / File Reference Section
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("DOCUMENT / FILE ATTACHMENT")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Theme.textMuted)
+                            .tracking(0.6)
+                        
+                        if !documentPath.isEmpty {
+                            HStack(spacing: 8) {
+                                Image(systemName: "doc.text.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(Theme.accent)
+                                
+                                Text(URL(fileURLWithPath: documentPath).lastPathComponent)
+                                    .font(.system(size: 11.5, weight: .medium))
+                                    .foregroundColor(Theme.textPrimary)
+                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    let url = URL(fileURLWithPath: documentPath)
+                                    NSWorkspace.shared.open(url)
+                                }) {
+                                    Text("Open")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(Theme.accent)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Theme.accent.opacity(0.12))
+                                        .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                                
+                                Button(action: {
+                                    documentPath = ""
+                                }) {
+                                    Image(systemName: "xmark.circle")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(Theme.wasteful)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(8)
+                            .background(Theme.bgSubtle)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Theme.accent.opacity(0.3), lineWidth: 1)
+                            )
+                        } else {
+                            Button(action: chooseDocument) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "paperclip")
+                                        .font(.system(size: 11, weight: .semibold))
+                                    Text("Attach File or Text Document...")
+                                        .font(.system(size: 11.5, weight: .medium))
+                                }
+                                .foregroundColor(Theme.textSecondary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Theme.bgSubtle)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Theme.border, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    
+                    // Reference Option Toggle
+                    Toggle(isOn: $isDocumentReference) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Pin as Document / Reference Note")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Theme.textPrimary)
+                            Text("Displays as a document reference badge on the calendar day")
+                                .font(.system(size: 10))
+                                .foregroundColor(Theme.textMuted)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .padding(.top, 2)
                 }
                 .padding(20)
             }
@@ -262,7 +396,7 @@ public struct CalendarEventEditorSheet: View {
                 .buttonStyle(.plain)
                 
                 Button(action: saveEvent) {
-                    Text("Save Event")
+                    Text(isDocumentReference ? "Save Reference" : "Save Event")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)
@@ -276,7 +410,7 @@ public struct CalendarEventEditorSheet: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
         }
-        .frame(width: 440, height: 500)
+        .frame(width: 460, height: 570)
         .background(Theme.bgCard)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
@@ -285,6 +419,21 @@ public struct CalendarEventEditorSheet: View {
         )
         .onAppear {
             initializeFields()
+        }
+    }
+    
+    private func chooseDocument() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.prompt = "Attach File"
+        if panel.runModal() == .OK, let url = panel.url {
+            documentPath = url.path
+            if title.isEmpty {
+                title = url.deletingPathExtension().lastPathComponent
+            }
+            isDocumentReference = true
         }
     }
     
@@ -298,6 +447,9 @@ public struct CalendarEventEditorSheet: View {
             selectedColorHex = ev.colorHex
             location = ev.location ?? ""
             notes = ev.notes ?? ""
+            linkUrl = ev.linkUrl ?? ""
+            documentPath = ev.documentPath ?? ""
+            isDocumentReference = ev.isDocumentReference
         } else {
             let start = initialStartDate ?? Date()
             let end = initialEndDate ?? Calendar.current.date(byAdding: .hour, value: 1, to: start) ?? start
@@ -314,6 +466,8 @@ public struct CalendarEventEditorSheet: View {
         
         // Ensure endDate >= startDate
         let finalEnd = max(startDate, endDate)
+        let cleanLink = linkUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanDoc = documentPath.trimmingCharacters(in: .whitespacesAndNewlines)
         
         if var existing = event {
             existing.title = cleanTitle
@@ -324,6 +478,9 @@ public struct CalendarEventEditorSheet: View {
             existing.colorHex = selectedColorHex
             existing.location = location.isEmpty ? nil : location
             existing.notes = notes.isEmpty ? nil : notes
+            existing.linkUrl = cleanLink.isEmpty ? nil : cleanLink
+            existing.documentPath = cleanDoc.isEmpty ? nil : cleanDoc
+            existing.isDocumentReference = isDocumentReference
             calendarManager.updateEvent(existing)
         } else {
             let newEvent = CalendarEvent(
@@ -334,7 +491,10 @@ public struct CalendarEventEditorSheet: View {
                 calendarId: selectedCalendarId,
                 colorHex: selectedColorHex,
                 location: location.isEmpty ? nil : location,
-                notes: notes.isEmpty ? nil : notes
+                notes: notes.isEmpty ? nil : notes,
+                linkUrl: cleanLink.isEmpty ? nil : cleanLink,
+                documentPath: cleanDoc.isEmpty ? nil : cleanDoc,
+                isDocumentReference: isDocumentReference
             )
             calendarManager.addEvent(newEvent)
         }

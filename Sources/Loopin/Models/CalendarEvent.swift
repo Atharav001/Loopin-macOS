@@ -13,6 +13,14 @@ public struct CalendarEvent: Identifiable, Codable, Equatable, Sendable {
     public var location: String?
     public var notes: String?
     public var gcalId: String?
+    public var linkUrl: String?
+    public var documentPath: String?
+    public var isDocumentReference: Bool
+    
+    enum CodingKeys: String, CodingKey {
+        case id, title, startDate, endDate, isAllDay, calendarId, colorHex
+        case location, notes, gcalId, linkUrl, documentPath, isDocumentReference
+    }
     
     public init(
         id: UUID = UUID(),
@@ -24,7 +32,10 @@ public struct CalendarEvent: Identifiable, Codable, Equatable, Sendable {
         colorHex: String = "#8B5CF6",
         location: String? = nil,
         notes: String? = nil,
-        gcalId: String? = nil
+        gcalId: String? = nil,
+        linkUrl: String? = nil,
+        documentPath: String? = nil,
+        isDocumentReference: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -36,6 +47,26 @@ public struct CalendarEvent: Identifiable, Codable, Equatable, Sendable {
         self.location = location
         self.notes = notes
         self.gcalId = gcalId
+        self.linkUrl = linkUrl
+        self.documentPath = documentPath
+        self.isDocumentReference = isDocumentReference
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.title = try container.decode(String.self, forKey: .title)
+        self.startDate = try container.decode(Date.self, forKey: .startDate)
+        self.endDate = try container.decode(Date.self, forKey: .endDate)
+        self.isAllDay = try container.decodeIfPresent(Bool.self, forKey: .isAllDay) ?? true
+        self.calendarId = try container.decodeIfPresent(String.self, forKey: .calendarId) ?? "planned"
+        self.colorHex = try container.decodeIfPresent(String.self, forKey: .colorHex) ?? "#8B5CF6"
+        self.location = try container.decodeIfPresent(String.self, forKey: .location)
+        self.notes = try container.decodeIfPresent(String.self, forKey: .notes)
+        self.gcalId = try container.decodeIfPresent(String.self, forKey: .gcalId)
+        self.linkUrl = try container.decodeIfPresent(String.self, forKey: .linkUrl)
+        self.documentPath = try container.decodeIfPresent(String.self, forKey: .documentPath)
+        self.isDocumentReference = try container.decodeIfPresent(Bool.self, forKey: .isDocumentReference) ?? false
     }
     
     public var color: Color {
