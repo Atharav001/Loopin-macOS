@@ -106,6 +106,8 @@ public struct CalendarView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(minWidth: 0, maxWidth: .infinity)
+            .clipped()
         }
         .background(Color(red: 27/255, green: 28/255, blue: 30/255))
         .animation(.spring(response: 0.28, dampingFraction: 0.85), value: appState.isCalendarSidebarVisible)

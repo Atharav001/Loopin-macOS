@@ -63,19 +63,30 @@ public struct MonthCalendarGrid: View {
         return (allDays, rows)
     }
     
+    private func colWidth(for col: Int, totalWidth: CGFloat) -> CGFloat {
+        let base = floor(totalWidth / 7.0)
+        let remainder = Int(totalWidth) - Int(base) * 7
+        return col < remainder ? base + 1 : base
+    }
+    
+    private func rowHeight(for row: Int, totalHeight: CGFloat, headerHeight: CGFloat, rowCount: Int) -> CGFloat {
+        let available = max(0, totalHeight - headerHeight)
+        let base = floor(available / CGFloat(rowCount))
+        let remainder = Int(available) - Int(base) * rowCount
+        return row < remainder ? base + 1 : base
+    }
+    
     public var body: some View {
         GeometryReader { geo in
             let totalWidth = geo.size.width
             let totalHeight = geo.size.height
-            let colWidth = floor(totalWidth / 7.0)
             let headerHeight: CGFloat = 26
             
             let metrics = gridMetrics
             let days = metrics.days
             let rowCount = metrics.rowCount
-            let rowHeight = floor((totalHeight - headerHeight) / CGFloat(rowCount))
             
-            ZStack {
+            ZStack(alignment: .topLeading) {
                 // Trackpad / Mouse Scroll Listener for Month Flipping
                 if let onScrollMonth = onScrollMonth {
                     MonthScrollWheelOverlay(onScroll: onScrollMonth)
@@ -85,13 +96,15 @@ public struct MonthCalendarGrid: View {
                     // 1. Weekday Column Headers (Right-aligned matching macOS Calendar)
                     HStack(spacing: 0) {
                         ForEach(0..<7, id: \.self) { col in
+                            let w = colWidth(for: col, totalWidth: totalWidth)
                             Text(weekdaySymbols[col])
                                 .font(.system(size: 11.5, weight: .medium))
                                 .foregroundColor(Color(white: 0.58))
-                                .frame(width: colWidth, height: headerHeight, alignment: .trailing)
-                                .padding(.trailing, 10)
+                                .padding(.trailing, 8)
+                                .frame(width: w, height: headerHeight, alignment: .trailing)
                         }
                     }
+                    .frame(width: totalWidth, height: headerHeight)
                     .background(Color(red: 25/255, green: 26/255, blue: 28/255))
                     .overlay(
                         Rectangle()
@@ -106,8 +119,10 @@ public struct MonthCalendarGrid: View {
                     
                     VStack(spacing: 0) {
                         ForEach(0..<rowCount, id: \.self) { row in
+                            let h = rowHeight(for: row, totalHeight: totalHeight, headerHeight: headerHeight, rowCount: rowCount)
                             HStack(spacing: 0) {
                                 ForEach(0..<7, id: \.self) { col in
+                                    let w = colWidth(for: col, totalWidth: totalWidth)
                                     let index = row * 7 + col
                                     if index < days.count {
                                         let day = days[index]
@@ -116,8 +131,10 @@ public struct MonthCalendarGrid: View {
                                         MonthDayCell(
                                             date: day,
                                             displayedMonth: monthDate,
-                                            width: colWidth,
-                                            height: rowHeight,
+                                            width: w,
+                                            height: h,
+                                            isFirstCol: col == 0,
+                                            isLastCol: col == 6,
                                             events: eventsForDay(day, from: visibleEvents),
                                             isSelectedRange: isSelectedRange,
                                             onSelectEvent: onSelectEvent,
@@ -125,15 +142,16 @@ public struct MonthCalendarGrid: View {
                                                 onSelectRange(day, day)
                                             }
                                         )
-                                        .frame(width: colWidth, height: rowHeight)
+                                        .frame(width: w, height: h)
+                                        .clipped()
                                         .contentShape(Rectangle())
                                         .gesture(
                                             DragGesture(minimumDistance: 4, coordinateSpace: .named("MonthGridSpace"))
                                                 .onChanged { value in
                                                     handleDragChanged(
                                                         value: value,
-                                                        colWidth: colWidth,
-                                                        rowHeight: rowHeight,
+                                                        totalWidth: totalWidth,
+                                                        totalHeight: totalHeight,
                                                         headerHeight: headerHeight,
                                                         rowCount: rowCount,
                                                         days: days
@@ -146,6 +164,7 @@ public struct MonthCalendarGrid: View {
                                     }
                                 }
                             }
+                            .frame(width: totalWidth, height: h)
                             
                             if row < rowCount - 1 {
                                 Rectangle()
@@ -154,27 +173,33 @@ public struct MonthCalendarGrid: View {
                             }
                         }
                     }
+                    .frame(width: totalWidth)
                 }
+                .frame(width: totalWidth, height: totalHeight, alignment: .topLeading)
             }
+            .frame(width: totalWidth, height: totalHeight, alignment: .topLeading)
+            .clipped()
             .coordinateSpace(name: "MonthGridSpace")
         }
         .background(Color(red: 27/255, green: 28/255, blue: 30/255))
     }
     
     // MARK: - Drag Selection Logic
-    private func handleDragChanged(value: DragGesture.Value, colWidth: CGFloat, rowHeight: CGFloat, headerHeight: CGFloat, rowCount: Int, days: [Date]) {
+    private func handleDragChanged(value: DragGesture.Value, totalWidth: CGFloat, totalHeight: CGFloat, headerHeight: CGFloat, rowCount: Int, days: [Date]) {
+        let colW = max(1, totalWidth / 7.0)
+        let rowH = max(1, (totalHeight - headerHeight) / CGFloat(rowCount))
         if !isDraggingRange {
             isDraggingRange = true
-            let startCol = Int(value.startLocation.x / colWidth)
-            let startRow = Int((value.startLocation.y - headerHeight) / rowHeight)
+            let startCol = max(0, min(6, Int(value.startLocation.x / colW)))
+            let startRow = max(0, min(rowCount - 1, Int((value.startLocation.y - headerHeight) / rowH)))
             let startIndex = startRow * 7 + startCol
             if startIndex >= 0 && startIndex < days.count {
                 dragStartDay = days[startIndex]
             }
         }
         
-        let currentCol = max(0, min(6, Int(value.location.x / colWidth)))
-        let currentRow = max(0, min(rowCount - 1, Int((value.location.y - headerHeight) / rowHeight)))
+        let currentCol = max(0, min(6, Int(value.location.x / colW)))
+        let currentRow = max(0, min(rowCount - 1, Int((value.location.y - headerHeight) / rowH)))
         let currentIndex = currentRow * 7 + currentCol
         if currentIndex >= 0 && currentIndex < days.count {
             dragCurrentDay = days[currentIndex]
@@ -229,6 +254,8 @@ public struct MonthDayCell: View {
     var displayedMonth: Date
     var width: CGFloat
     var height: CGFloat
+    var isFirstCol: Bool = false
+    var isLastCol: Bool = false
     var events: [CalendarEvent]
     var isSelectedRange: Bool
     var onSelectEvent: (CalendarEvent) -> Void
@@ -262,6 +289,14 @@ public struct MonthDayCell: View {
                            : (isCurrentMonth ? Color(red: 27/255, green: 28/255, blue: 30/255) : Color(red: 23/255, green: 24/255, blue: 25/255)))
                 )
             
+            // Left Grid Line on Sunday / First Column
+            if isFirstCol {
+                Rectangle()
+                    .fill(Color(white: 0.17))
+                    .frame(width: 1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
             // Vertical Right Grid Line
             Rectangle()
                 .fill(Color(white: 0.17))
@@ -288,11 +323,11 @@ public struct MonthDayCell: View {
                                 .foregroundColor(Color(white: 0.65))
                         }
                         .menuStyle(.borderlessButton)
-                        .padding(.leading, 6)
+                        .padding(.leading, 5)
                         .padding(.top, 4)
                     }
                     
-                    Spacer()
+                    Spacer(minLength: 0)
                     
                     if isToday {
                         // Red circular badge with bold white text
@@ -320,7 +355,7 @@ public struct MonthDayCell: View {
                     }
                 }
                 
-                // Events Container
+                // Events Container (strictly fits width and never causes horizontal expansion)
                 VStack(spacing: 1.5) {
                     ForEach(events.prefix(4)) { event in
                         if event.isDocumentReference || event.documentPath != nil {
@@ -346,17 +381,22 @@ public struct MonthDayCell: View {
                             Text("+\(events.count - 4) more")
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundColor(isCurrentMonth ? Color(white: 0.6) : Color(white: 0.4))
-                            Spacer()
+                            Spacer(minLength: 0)
                         }
-                        .padding(.leading, 6)
+                        .padding(.leading, 5)
                         .padding(.top, 1)
                     }
                 }
                 .padding(.horizontal, 2)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
                 
                 Spacer(minLength: 0)
             }
+            .frame(width: width, height: height, alignment: .topLeading)
+            .clipped()
         }
+        .frame(width: width, height: height)
+        .clipped()
         .onHover { hovering in
             isHovered = hovering
         }
@@ -465,21 +505,21 @@ public struct HolidayPillView: View {
     
     public var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 3.5) {
+            HStack(spacing: 3) {
                 // Left small icon
                 Image(systemName: holidayStyle.iconName)
                     .font(.system(size: 7.5, weight: .bold))
                     .foregroundColor(holidayStyle.iconColor.opacity(isDimmed ? 0.5 : 1.0))
                 
                 Text(event.title)
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 9, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundColor(holidayStyle.text.opacity(isDimmed ? 0.5 : 1.0))
-                
-                Spacer(minLength: 0)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 5)
+            .padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 17)
             .background(
                 RoundedRectangle(cornerRadius: 4)
@@ -487,7 +527,7 @@ public struct HolidayPillView: View {
             )
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 2)
+        .padding(.horizontal, 1.5)
     }
 }
 
@@ -507,24 +547,24 @@ public struct DocumentReferencePillView: View {
                 onTap()
             }
         }) {
-            HStack(spacing: 3.5) {
+            HStack(spacing: 3) {
                 Image(systemName: event.documentPath != nil ? "doc.text.fill" : "paperclip")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.system(size: 7.5, weight: .bold))
                     .foregroundColor(Color(red: 56/255, green: 189/255, blue: 248/255))
                 
                 Text(event.title)
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 9, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundColor(Color(red: 224/255, green: 242/255, blue: 254/255).opacity(isDimmed ? 0.5 : 1.0))
-                
-                Spacer(minLength: 0)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 
                 Image(systemName: "arrow.up.right")
                     .font(.system(size: 6.5, weight: .bold))
                     .foregroundColor(Color(red: 56/255, green: 189/255, blue: 248/255).opacity(isDimmed ? 0.4 : 0.8))
             }
-            .padding(.horizontal, 5)
+            .padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 17)
             .background(
                 RoundedRectangle(cornerRadius: 4)
@@ -536,7 +576,7 @@ public struct DocumentReferencePillView: View {
             )
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 2)
+        .padding(.horizontal, 1.5)
         .help(event.documentPath ?? event.linkUrl ?? event.title)
     }
 }
@@ -557,40 +597,41 @@ public struct TimedEventRowView: View {
     
     public var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 4) {
+            HStack(spacing: 3) {
                 // Vertical accent bar (Yellow, Purple, etc.)
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(event.color.opacity(isDimmed ? 0.5 : 1.0))
-                    .frame(width: 3.5, height: 11)
+                    .frame(width: 3, height: 11)
                 
-                // Event Title
+                // Event Title (compresses and truncates gracefully to fit narrow cell)
                 Text(event.title)
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 9, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundColor(Color(white: isDimmed ? 0.5 : 0.92))
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 
                 // Link or Document badge indicator
                 if event.documentPath != nil {
                     Image(systemName: "paperclip")
-                        .font(.system(size: 7.5))
+                        .font(.system(size: 7))
                         .foregroundColor(Color(red: 56/255, green: 189/255, blue: 248/255))
                 } else if event.linkUrl != nil {
                     Image(systemName: "link")
-                        .font(.system(size: 7.5))
+                        .font(.system(size: 7))
                         .foregroundColor(Color(red: 147/255, green: 197/255, blue: 253/255))
                 }
                 
-                Spacer(minLength: 2)
-                
                 // Event Time on Right (e.g. "9 AM", "10 AM")
                 Text(timeFormatted)
-                    .font(.system(size: 8.5, weight: .medium))
+                    .font(.system(size: 8, weight: .medium))
                     .foregroundColor(Color(white: isDimmed ? 0.35 : 0.55))
                     .lineLimit(1)
+                    .fixedSize()
             }
             .padding(.horizontal, 3)
             .padding(.vertical, 1)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 16)
             .background(
                 RoundedRectangle(cornerRadius: 3)
@@ -598,7 +639,7 @@ public struct TimedEventRowView: View {
             )
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 2)
+        .padding(.horizontal, 1.5)
         .onHover { hovering in
             isHovered = hovering
         }
